@@ -51,12 +51,20 @@ export const Header: React.FC = () => {
               Home
             </Link>
             {!loading && user && (
-              <Link 
-                href="/dashboard" 
-                className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link 
+                  href="/dashboard" 
+                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  href="/profile" 
+                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Profile
+                </Link>
+              </>
             )}
             <Link 
               href="/destinations" 

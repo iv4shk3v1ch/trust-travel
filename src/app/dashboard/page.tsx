@@ -83,7 +83,7 @@ export default function DashboardPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
             <h3 className="font-semibold text-indigo-900 dark:text-indigo-100 mb-2">
               My Trips
@@ -110,6 +110,15 @@ export default function DashboardPage() {
               Get personalized travel recommendations
             </p>
           </div>
+          
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+            <h3 className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
+              Travel Profile
+            </h3>
+            <p className="text-sm text-orange-700 dark:text-orange-300">
+              Manage your preferences and personal info
+            </p>
+          </div>
         </div>
       </div>
       
@@ -118,6 +127,12 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div className="flex flex-wrap gap-4">
+          <Link 
+            href="/profile"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Manage Profile
+          </Link>
           <Link 
             href="/test-env"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"

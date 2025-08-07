@@ -54,9 +54,9 @@ export default function SignupPage() {
 
       if (data.user) {
         setSuccess(true);
-        // Redirect to dashboard or show success message
+        // Redirect new users to onboarding
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/onboarding');
         }, 2000);
       }
     } catch (err) {
@@ -77,7 +77,7 @@ export default function SignupPage() {
               Account Created!
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Welcome to TrustTravel! Redirecting to your dashboard...
+              Welcome to TrustTravel! Setting up your profile...
             </p>
           </div>
         </div>

@@ -1,0 +1,287 @@
+'use client';
+
+import React, { useState } from 'react';
+import { UserPreferences, BasicInfo, TravelPreferences, Personality, Restrictions, Budget } from '@/types/preferences';
+import { BasicInfoStep } from './BasicInfoStep';
+import { PreferencesStep } from './PreferencesStep';
+import { PersonalityStep } from './PersonalityStep';
+import { RestrictionsStep } from './RestrictionsStep';
+import { BudgetStep } from './BudgetStep';
+import { supabase } from '@/lib/supabase';
+
+interface MultiStepFormProps {
+  onComplete: (data: UserPreferences) => void;
+  initialData?: Partial<UserPreferences>;
+  isNewUser?: boolean;
+}
+
+const STEPS = [
+  { id: 1, title: 'Basic Info', description: 'Personal details and emergency contact' },
+  { id: 2, title: 'Preferences', description: 'Travel style and accommodation preferences' },
+  { id: 3, title: 'Personality', description: 'Travel personality and interests' },
+  { id: 4, title: 'Restrictions', description: 'Dietary, medical, and accessibility needs' },
+  { id: 5, title: 'Budget', description: 'Budget range and payment preferences' }
+];
+
+const defaultUserPreferences: UserPreferences = {
+  basicInfo: {
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    nationality: '',
+    phone: '',
+    emergencyContact: {
+      name: '',
+      phone: '',
+      relationship: ''
+    }
+  },
+  preferences: {
+    travelStyle: [],
+    accommodationType: [],
+    transportPreference: [],
+    groupSize: '',
+    planningStyle: '',
+    activityLevel: ''
+  },
+  personality: {
+    adventurousness: 3,
+    socialness: 3,
+    comfortLevel: 3,
+    flexibilityLevel: 3,
+    interests: [],
+    languages: []
+  },
+  restrictions: {
+    dietaryRestrictions: [],
+    medicalConditions: [],
+    mobilityRequirements: [],
+    religiousConsiderations: [],
+    allergies: []
+  },
+  budget: {
+    dailyBudget: {
+      min: 0,
+      max: 0
+    },
+    currency: '',
+    budgetPriorities: [],
+    paymentMethods: []
+  },
+  completedSteps: [],
+  isComplete: false
+};
+
+export const MultiStepForm: React.FC<MultiStepFormProps> = ({
+  onComplete,
+  initialData,
+  isNewUser = false
+}) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState<UserPreferences>({
+    ...defaultUserPreferences,
+    ...initialData
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Auto-save progress for existing users
+  const saveProgress = async (data: UserPreferences) => {
+    if (!isNewUser) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Save to Supabase user metadata or a separate table
+          await supabase.auth.updateUser({
+            data: { preferences: data }
+          });
+        }
+      } catch (error) {
+        console.error('Error saving progress:', error);
+      }
+    }
+  };
+
+  const updateStepData = (stepData: Partial<UserPreferences>) => {
+    const newFormData = { ...formData, ...stepData };
+    setFormData(newFormData);
+    
+    // Mark current step as completed
+    if (!newFormData.completedSteps.includes(currentStep)) {
+      newFormData.completedSteps = [...newFormData.completedSteps, currentStep];
+      setFormData(newFormData);
+    }
+
+    // Auto-save for existing users
+    if (!isNewUser) {
+      saveProgress(newFormData);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleComplete();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = async () => {
+    setIsLoading(true);
+    try {
+      const finalData = {
+        ...formData,
+        isComplete: true,
+        completedSteps: STEPS.map(step => step.id)
+      };
+      
+      // Save final data
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.auth.updateUser({
+          data: { preferences: finalData }
+        });
+      }
+      
+      onComplete(finalData);
+    } catch (error) {
+      console.error('Error completing form:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderCurrentStep = () => {
+    const commonProps = {
+      onNext: handleNext,
+      onPrevious: currentStep > 1 ? handlePrevious : undefined,
+      isFirst: currentStep === 1,
+      isLast: currentStep === STEPS.length
+    };
+
+    switch (currentStep) {
+      case 1:
+        return (
+          <BasicInfoStep
+            data={formData.basicInfo}
+            updateData={(data) => updateStepData({ basicInfo: data as BasicInfo })}
+            {...commonProps}
+          />
+        );
+      case 2:
+        return (
+          <PreferencesStep
+            data={formData.preferences}
+            updateData={(data) => updateStepData({ preferences: data as TravelPreferences })}
+            {...commonProps}
+          />
+        );
+      case 3:
+        return (
+          <PersonalityStep
+            data={formData.personality}
+            updateData={(data) => updateStepData({ personality: data as Personality })}
+            {...commonProps}
+          />
+        );
+      case 4:
+        return (
+          <RestrictionsStep
+            data={formData.restrictions}
+            updateData={(data) => updateStepData({ restrictions: data as Restrictions })}
+            {...commonProps}
+          />
+        );
+      case 5:
+        return (
+          <BudgetStep
+            data={formData.budget}
+            updateData={(data) => updateStepData({ budget: data as Budget })}
+            {...commonProps}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Progress Indicator */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {isNewUser ? 'Welcome! Set Up Your Travel Profile' : 'Update Your Travel Profile'}
+          </h1>
+          <span className="text-sm text-gray-500">
+            Step {currentStep} of {STEPS.length}
+          </span>
+        </div>
+        
+        {/* Step Progress Bar */}
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+          <div
+            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+          />
+        </div>
+        
+        {/* Step Indicators */}
+        <div className="flex justify-between">
+          {STEPS.map((step) => (
+            <div key={step.id} className="flex flex-col items-center flex-1">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  step.id < currentStep
+                    ? 'bg-green-500 text-white'
+                    : step.id === currentStep
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-300 text-gray-600'
+                }`}
+              >
+                {step.id < currentStep ? '✓' : step.id}
+              </div>
+              <div className="mt-2 text-center">
+                <p className={`text-xs font-medium ${
+                  step.id <= currentStep ? 'text-gray-900 dark:text-white' : 'text-gray-500'
+                }`}>
+                  {step.title}
+                </p>
+                <p className="text-xs text-gray-500 hidden md:block">
+                  {step.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Current Step Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <span className="ml-3 text-gray-600 dark:text-gray-400">Saving your preferences...</span>
+          </div>
+        ) : (
+          renderCurrentStep()
+        )}
+      </div>
+
+      {/* Help Text */}
+      <div className="mt-6 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {isNewUser 
+            ? 'This information helps us provide personalized travel recommendations. You can always update these preferences later.'
+            : 'Your progress is automatically saved. You can complete this form at your own pace.'
+          }
+        </p>
+      </div>
+    </div>
+  );
+};
