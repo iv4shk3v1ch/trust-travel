@@ -69,9 +69,6 @@ export default function DashboardPage() {
               Here&apos;s your TrustTravel dashboard. Manage your travel plans and explore trusted destinations.
             </p>
           </div>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-            Logout
-          </Button>
         </div>
         
         {user && (
