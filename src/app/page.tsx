@@ -7,25 +7,34 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 space-y-8">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
-              Welcome
+              TrustTravel
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-              Start your journey with our amazing platform. Discover new possibilities and unlock your potential.
+              Discover trusted destinations with confidence. Join our community of travelers sharing real experiences.
             </p>
           </div>
           
           <div className="space-y-3">
-            <Link href="/dashboard">
+            <Link href="/login">
               <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-600">
                 Get Started
               </button>
             </Link>
             
-            <Link href="/test-env">
-              <button className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600">
-                Test Environment
+            <Link href="/signup">
+              <button className="w-full border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-600">
+                Create Account
               </button>
             </Link>
+            
+            {/* Only show test environment in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/test-env">
+                <button className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition-colors">
+                  🔧 Dev: Test Environment
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
