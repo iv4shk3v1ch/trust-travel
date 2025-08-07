@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { supabase } from '@/lib/supabase';
 
 export default function TestEnvironmentPage() {
   const [prompt, setPrompt] = useState('');
@@ -39,16 +40,16 @@ export default function TestEnvironmentPage() {
 
   const testSupabase = async () => {
     try {
-      const { supabase } = await import('@/lib/supabase');
-      const { data, error } = await supabase.from('profiles').select('count').limit(1);
+      // Test Supabase connection
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) {
-        setSupabaseStatus(`Error: ${error.message}`);
+      if (session) {
+        setSupabaseStatus(`✅ Connected! User: ${session.user.email}`);
       } else {
-        setSupabaseStatus('✅ Connected successfully');
+        setSupabaseStatus('✅ Connected (no user logged in)');
       }
     } catch (error) {
-      setSupabaseStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setSupabaseStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
