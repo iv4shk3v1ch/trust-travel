@@ -1,57 +1,36 @@
 export interface BasicInfo {
   firstName: string;
   lastName: string;
-  dateOfBirth: string;
-  nationality: string;
-  phone: string;
-  emergencyContact: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
+  gender: string;
+  ageGroup: string;
 }
 
 export interface TravelPreferences {
-  travelStyle: string[];
-  accommodationType: string[];
-  transportPreference: string[];
-  groupSize: string;
+  activities: string[];
+  placeTypes: string[];
+}
+
+export interface FoodAndRestrictions {
+  foodExcitement: string[];
+  restrictions: string[];
+  placesToAvoid: string[];
+}
+
+export interface PersonalityAndStyle {
+  travelPersonality: string[];
   planningStyle: string;
-  activityLevel: string;
-}
-
-export interface Personality {
-  adventurousness: number; // 1-5 scale
-  socialness: number; // 1-5 scale
-  comfortLevel: number; // 1-5 scale
-  flexibilityLevel: number; // 1-5 scale
-  interests: string[];
-  languages: string[];
-}
-
-export interface Restrictions {
-  dietaryRestrictions: string[];
-  medicalConditions: string[];
-  mobilityRequirements: string[];
-  religiousConsiderations: string[];
-  allergies: string[];
 }
 
 export interface Budget {
-  dailyBudget: {
-    min: number;
-    max: number;
-  };
-  currency: string;
-  budgetPriorities: string[];
-  paymentMethods: string[];
+  spendingStyle: string;
+  travelWith: string;
 }
 
 export interface UserPreferences {
   basicInfo: BasicInfo;
   preferences: TravelPreferences;
-  personality: Personality;
-  restrictions: Restrictions;
+  foodAndRestrictions: FoodAndRestrictions;
+  personalityAndStyle: PersonalityAndStyle;
   budget: Budget;
   completedSteps: number[];
   isComplete: boolean;

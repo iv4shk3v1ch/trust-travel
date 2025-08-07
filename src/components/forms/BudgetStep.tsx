@@ -3,111 +3,205 @@
 import React, { useState } from 'react';
 import { FormStepProps, Budget } from '@/types/preferences';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 
-const CURRENCIES = [
-  'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR', 'BRL', 'MXN',
-  'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'RUB', 'TRY', 'ZAR'
+const SPENDING_STYLES = [
+  {
+    value: 'Budget-focused',
+    title: 'Budget Explorer',
+    description: 'I love finding great value and saving money',
+    emoji: '💸',
+    color: 'green'
+  },
+  {
+    value: 'Value-for-money',
+    title: 'Smart Spender',
+    description: 'I want quality experiences at fair prices',
+    emoji: '💰',
+    color: 'blue'
+  },
+  {
+    value: 'I don\'t mind splurging',
+    title: 'Comfort Seeker',
+    description: 'I invest in comfort and premium experiences',
+    emoji: '🤑',
+    color: 'purple'
+  }
 ];
 
-const BUDGET_PRIORITIES = [
-  'Accommodation', 'Food & Dining', 'Transportation', 'Activities & Tours',
-  'Shopping', 'Entertainment', 'Insurance', 'Emergency Fund', 'Souvenirs',
-  'Photography', 'Local Experiences', 'Comfort & Convenience'
+const TRAVEL_COMPANIONS = [
+  { value: 'Solo', emoji: '🧳', description: 'Just me, myself, and I' },
+  { value: 'With friends/family', emoji: '👥', description: 'Sharing costs and memories' },
+  { value: 'Depends on trip', emoji: '🤷', description: 'It varies by destination' }
 ];
 
-const PAYMENT_METHODS = [
-  'Credit Card', 'Debit Card', 'Cash', 'Digital Wallet (PayPal, Apple Pay, etc.)',
-  'Traveler\'s Checks', 'Prepaid Travel Card', 'Bank Transfer', 'Cryptocurrency'
-];
-
-interface SelectProps {
+interface SpendingStyleSelectorProps {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  placeholder?: string;
-  error?: string;
-  required?: boolean;
+  description?: string;
+  options: Array<{ 
+    value: string; 
+    title: string; 
+    description: string; 
+    emoji: string; 
+    color: string; 
+  }>;
+  selected: string;
+  onChange: (selected: string) => void;
 }
 
-const Select: React.FC<SelectProps> = ({
+const SpendingStyleSelector: React.FC<SpendingStyleSelectorProps> = ({
   label,
-  value,
-  onChange,
+  description,
   options,
-  placeholder,
-  error,
-  required
+  selected,
+  onChange
 }) => {
+  const getColorClasses = (color: string, isSelected: boolean) => {
+    const baseClasses = 'p-6 rounded-xl border-2 text-center transition-all hover:shadow-lg cursor-pointer';
+    
+    if (isSelected) {
+      switch (color) {
+        case 'green':
+          return `${baseClasses} border-green-500 bg-green-50 dark:bg-green-900/30`;
+        case 'blue':
+          return `${baseClasses} border-blue-500 bg-blue-50 dark:bg-blue-900/30`;
+        case 'purple':
+          return `${baseClasses} border-purple-500 bg-purple-50 dark:bg-purple-900/30`;
+        default:
+          return `${baseClasses} border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`;
+      }
+    }
+    
+    return `${baseClasses} border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800`;
+  };
+
+  const getTextColorClasses = (color: string, isSelected: boolean) => {
+    if (isSelected) {
+      switch (color) {
+        case 'green':
+          return 'text-green-700 dark:text-green-300';
+        case 'blue':
+          return 'text-blue-700 dark:text-blue-300';
+        case 'purple':
+          return 'text-purple-700 dark:text-purple-300';
+        default:
+          return 'text-indigo-700 dark:text-indigo-300';
+      }
+    }
+    return 'text-gray-900 dark:text-white';
+  };
+
+  const getSubTextColorClasses = (color: string, isSelected: boolean) => {
+    if (isSelected) {
+      switch (color) {
+        case 'green':
+          return 'text-green-600 dark:text-green-400';
+        case 'blue':
+          return 'text-blue-600 dark:text-blue-400';
+        case 'purple':
+          return 'text-purple-600 dark:text-purple-400';
+        default:
+          return 'text-indigo-600 dark:text-indigo-400';
+      }
+    }
+    return 'text-gray-500 dark:text-gray-400';
+  };
+
   return (
-    <div className="space-y-1">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-          error ? 'border-red-500' : 'border-gray-300'
-        }`}
-      >
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          {label}
+        </h3>
+        {description && (
+          <p className="text-gray-600 dark:text-gray-400">{description}</p>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {options.map((option) => {
+          const isSelected = selected === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={getColorClasses(option.color, isSelected)}
+            >
+              <div className="space-y-3">
+                <span className="text-4xl">{option.emoji}</span>
+                <div>
+                  <h4 className={`font-semibold text-base ${getTextColorClasses(option.color, isSelected)}`}>
+                    {option.title}
+                  </h4>
+                  <p className={`text-sm mt-1 ${getSubTextColorClasses(option.color, isSelected)}`}>
+                    {option.description}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
 
-interface CheckboxGroupProps {
+interface CompanionSelectorProps {
   label: string;
-  options: string[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
   description?: string;
+  options: Array<{ value: string; emoji: string; description: string }>;
+  selected: string;
+  onChange: (selected: string) => void;
 }
 
-const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
+const CompanionSelector: React.FC<CompanionSelectorProps> = ({
   label,
+  description,
   options,
   selected,
-  onChange,
-  description
+  onChange
 }) => {
-  const handleChange = (option: string) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter(item => item !== option));
-    } else {
-      onChange([...selected, option]);
-    }
-  };
-
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           {label}
-        </label>
+        </h3>
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
+          <p className="text-gray-600 dark:text-gray-400">{description}</p>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {options.map((option) => (
-          <label key={option} className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selected.includes(option)}
-              onChange={() => handleChange(option)}
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
-          </label>
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`p-4 rounded-xl border-2 text-center transition-all hover:shadow-md ${
+              selected === option.value
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="space-y-2">
+              <span className="text-2xl">{option.emoji}</span>
+              <div>
+                <h4 className={`font-medium text-sm ${
+                  selected === option.value
+                    ? 'text-indigo-700 dark:text-indigo-300'
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  {option.value}
+                </h4>
+                <p className={`text-xs mt-1 ${
+                  selected === option.value
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {option.description}
+                </p>
+              </div>
+            </div>
+          </button>
         ))}
       </div>
     </div>
@@ -122,69 +216,20 @@ export const BudgetStep: React.FC<FormStepProps<Budget>> = ({
   isLast
 }) => {
   const [formData, setFormData] = useState<Budget>(data);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleBudgetChange = (field: 'min' | 'max', value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setFormData(prev => ({
-      ...prev,
-      dailyBudget: {
-        ...prev.dailyBudget,
-        [field]: numValue
-      }
-    }));
+  const handleSpendingStyleChange = (spendingStyle: string) => {
+    const newData = { ...formData, spendingStyle };
+    setFormData(newData);
   };
 
-  const handleCurrencyChange = (currency: string) => {
-    setFormData(prev => ({
-      ...prev,
-      currency
-    }));
-  };
-
-  const handleCheckboxChange = (field: keyof Budget, selected: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: selected
-    }));
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.currency) {
-      newErrors.currency = 'Please select a currency';
-    }
-
-    if (formData.dailyBudget.min <= 0) {
-      newErrors.minBudget = 'Minimum budget must be greater than 0';
-    }
-
-    if (formData.dailyBudget.max <= 0) {
-      newErrors.maxBudget = 'Maximum budget must be greater than 0';
-    }
-
-    if (formData.dailyBudget.min >= formData.dailyBudget.max) {
-      newErrors.budgetRange = 'Maximum budget must be greater than minimum budget';
-    }
-
-    if (formData.budgetPriorities.length === 0) {
-      newErrors.priorities = 'Please select at least one budget priority';
-    }
-
-    if (formData.paymentMethods.length === 0) {
-      newErrors.payment = 'Please select at least one payment method';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleTravelWithChange = (travelWith: string) => {
+    const newData = { ...formData, travelWith };
+    setFormData(newData);
   };
 
   const handleNext = () => {
-    if (validateForm()) {
-      updateData(formData);
-      onNext();
-    }
+    updateData(formData);
+    onNext();
   };
 
   const handlePrevious = () => {
@@ -193,91 +238,53 @@ export const BudgetStep: React.FC<FormStepProps<Budget>> = ({
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Budget & Payment</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Help us recommend destinations and experiences that fit your budget.
+    <div className="space-y-10">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          Let&apos;s talk budget 💰
+        </h2>
+        <p className="text-lg text-gray-600 dark:text-gray-400">
+          Help us understand your spending style
         </p>
       </div>
 
-      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <p className="text-sm text-green-700 dark:text-green-300">
-              <strong>Budget Tip:</strong> Your budget information helps us recommend destinations, accommodations, 
-              and activities that match your financial comfort zone. You can always adjust these later.
+      <SpendingStyleSelector
+        label="How do you usually spend when traveling?"
+        description="Choose the approach that best fits your travel style"
+        options={SPENDING_STYLES}
+        selected={formData.spendingStyle}
+        onChange={handleSpendingStyleChange}
+      />
+
+      <CompanionSelector
+        label="Do you usually plan solo, or split costs with others?"
+        description="This helps us tailor budget recommendations"
+        options={TRAVEL_COMPANIONS}
+        selected={formData.travelWith}
+        onChange={handleTravelWithChange}
+      />
+
+      <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-xl">
+        <div className="flex items-start space-x-3">
+          <span className="text-2xl">💡</span>
+          <div>
+            <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+              Why we ask about budget
+            </h4>
+            <p className="text-green-700 dark:text-green-300 text-sm">
+              Your spending style helps us recommend destinations, activities, and accommodations 
+              that match your comfort zone. We&apos;ll never judge your budget - everyone travels differently!
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Select
-          label="Currency"
-          value={formData.currency}
-          onChange={handleCurrencyChange}
-          options={CURRENCIES}
-          placeholder="Select currency"
-          error={errors.currency}
-          required
-        />
-        <Input
-          label="Minimum Daily Budget"
-          type="number"
-          value={formData.dailyBudget.min.toString()}
-          onChange={(e) => handleBudgetChange('min', e.target.value)}
-          error={errors.minBudget}
-          placeholder="50"
-          required
-        />
-        <Input
-          label="Maximum Daily Budget"
-          type="number"
-          value={formData.dailyBudget.max.toString()}
-          onChange={(e) => handleBudgetChange('max', e.target.value)}
-          error={errors.maxBudget || errors.budgetRange}
-          placeholder="200"
-          required
-        />
-      </div>
-
-      <div className="text-sm text-gray-600 dark:text-gray-400">
-        <p>
-          <strong>Daily budget includes:</strong> accommodation, meals, local transportation, and activities per person.
-          International flights and travel insurance are typically separate.
-        </p>
-      </div>
-
-      <CheckboxGroup
-        label="Budget Priorities"
-        description="What are your spending priorities when traveling? (Select all that apply)"
-        options={BUDGET_PRIORITIES}
-        selected={formData.budgetPriorities}
-        onChange={(selected) => handleCheckboxChange('budgetPriorities', selected)}
-      />
-      {errors.priorities && <p className="text-sm text-red-600 -mt-2">{errors.priorities}</p>}
-
-      <CheckboxGroup
-        label="Preferred Payment Methods"
-        description="How do you prefer to pay while traveling?"
-        options={PAYMENT_METHODS}
-        selected={formData.paymentMethods}
-        onChange={(selected) => handleCheckboxChange('paymentMethods', selected)}
-      />
-      {errors.payment && <p className="text-sm text-red-600 -mt-2">{errors.payment}</p>}
-
       <div className="flex justify-between pt-6">
         <Button variant="outline" onClick={handlePrevious}>
-          Previous
+          ← Back
         </Button>
-        <Button onClick={handleNext}>
-          {isLast ? 'Complete Setup' : 'Next Step'}
+        <Button onClick={handleNext} size="lg" className="px-8">
+          {isLast ? '🎉 Complete My Profile' : 'Next Step →'}
         </Button>
       </div>
     </div>

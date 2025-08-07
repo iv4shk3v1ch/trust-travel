@@ -156,88 +156,85 @@ export default function ProfilePage() {
                 </h3>
                 <div className="space-y-2 text-sm">
                   <p><span className="font-medium">Name:</span> {currentPreferences.basicInfo.firstName} {currentPreferences.basicInfo.lastName}</p>
-                  <p><span className="font-medium">Nationality:</span> {currentPreferences.basicInfo.nationality}</p>
-                  <p><span className="font-medium">Emergency Contact:</span> {currentPreferences.basicInfo.emergencyContact.name}</p>
+                  <p><span className="font-medium">Gender:</span> {currentPreferences.basicInfo.gender}</p>
+                  <p><span className="font-medium">Age Group:</span> {currentPreferences.basicInfo.ageGroup}</p>
                 </div>
               </div>
 
-              {/* Travel Style */}
+              {/* Travel Activities */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Travel Style
+                  Favorite Activities
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Preferred Styles:</span> {currentPreferences.preferences.travelStyle.slice(0, 2).join(', ')}{currentPreferences.preferences.travelStyle.length > 2 ? '...' : ''}</p>
-                  <p><span className="font-medium">Group Size:</span> {currentPreferences.preferences.groupSize}</p>
-                  <p><span className="font-medium">Planning Style:</span> {currentPreferences.preferences.planningStyle}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {currentPreferences.preferences.activities.slice(0, 3).map((activity) => (
+                      <span key={activity} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs rounded-full">
+                        {activity}
+                      </span>
+                    ))}
+                    {currentPreferences.preferences.activities.length > 3 && (
+                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
+                        +{currentPreferences.preferences.activities.length - 3} more
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Budget */}
+              {/* Preferred Places */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Budget Range
+                  Preferred Places
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Daily Budget:</span> {currentPreferences.budget.currency} {currentPreferences.budget.dailyBudget.min} - {currentPreferences.budget.dailyBudget.max}</p>
-                  <p><span className="font-medium">Top Priority:</span> {currentPreferences.budget.budgetPriorities[0]}</p>
+                  {currentPreferences.preferences.placeTypes.slice(0, 2).map((place) => (
+                    <p key={place} className="text-gray-700 dark:text-gray-300">• {place}</p>
+                  ))}
+                  {currentPreferences.preferences.placeTypes.length > 2 && (
+                    <p className="text-gray-500 dark:text-gray-400 text-xs">
+                      +{currentPreferences.preferences.placeTypes.length - 2} more places
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Personality Traits */}
+              {/* Food Preferences */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Food & Dining
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <p><span className="font-medium">Excited by:</span> {currentPreferences.foodAndRestrictions.foodExcitement.slice(0, 2).join(', ')}{currentPreferences.foodAndRestrictions.foodExcitement.length > 2 ? '...' : ''}</p>
+                  <p><span className="font-medium">Restrictions:</span> {currentPreferences.foodAndRestrictions.restrictions.length > 0 ? currentPreferences.foodAndRestrictions.restrictions.slice(0, 2).join(', ') : 'None'}</p>
+                </div>
+              </div>
+
+              {/* Travel Personality */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Travel Personality
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Adventurousness:</span>
-                    <div className="flex">
-                      {[1,2,3,4,5].map(i => (
-                        <span key={i} className={i <= currentPreferences.personality.adventurousness ? 'text-indigo-600' : 'text-gray-300'}>★</span>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap gap-1">
+                    {currentPreferences.personalityAndStyle.travelPersonality.slice(0, 3).map((trait) => (
+                      <span key={trait} className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
+                        {trait}
+                      </span>
+                    ))}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Social Level:</span>
-                    <div className="flex">
-                      {[1,2,3,4,5].map(i => (
-                        <span key={i} className={i <= currentPreferences.personality.socialness ? 'text-indigo-600' : 'text-gray-300'}>★</span>
-                      ))}
-                    </div>
-                  </div>
-                  <p><span className="font-medium">Languages:</span> {currentPreferences.personality.languages.slice(0, 2).join(', ')}</p>
+                  <p><span className="font-medium">Planning Style:</span> {currentPreferences.personalityAndStyle.planningStyle}</p>
                 </div>
               </div>
 
-              {/* Restrictions Summary */}
+              {/* Budget Style */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Special Requirements
+                  Budget & Travel Style
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Dietary:</span> {currentPreferences.restrictions.dietaryRestrictions.length > 0 ? currentPreferences.restrictions.dietaryRestrictions.slice(0, 2).join(', ') : 'None'}</p>
-                  <p><span className="font-medium">Medical:</span> {currentPreferences.restrictions.medicalConditions.length > 0 ? currentPreferences.restrictions.medicalConditions.slice(0, 2).join(', ') : 'None'}</p>
-                  <p><span className="font-medium">Mobility:</span> {currentPreferences.restrictions.mobilityRequirements.length > 0 ? 'Yes' : 'None'}</p>
-                </div>
-              </div>
-
-              {/* Interests */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Interests
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {currentPreferences.personality.interests.slice(0, 4).map((interest) => (
-                    <span key={interest} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs rounded-full">
-                      {interest}
-                    </span>
-                  ))}
-                  {currentPreferences.personality.interests.length > 4 && (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
-                      +{currentPreferences.personality.interests.length - 4} more
-                    </span>
-                  )}
+                  <p><span className="font-medium">Spending Style:</span> {currentPreferences.budget.spendingStyle}</p>
+                  <p><span className="font-medium">Usually travels:</span> {currentPreferences.budget.travelWith}</p>
                 </div>
               </div>
             </div>

@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { UserPreferences, BasicInfo, TravelPreferences, Personality, Restrictions, Budget } from '@/types/preferences';
+import { UserPreferences, BasicInfo, TravelPreferences, FoodAndRestrictions, PersonalityAndStyle, Budget } from '@/types/preferences';
 import { BasicInfoStep } from './BasicInfoStep';
 import { PreferencesStep } from './PreferencesStep';
+import { FoodAndRestrictionsStep } from './FoodAndRestrictionsStep';
 import { PersonalityStep } from './PersonalityStep';
-import { RestrictionsStep } from './RestrictionsStep';
 import { BudgetStep } from './BudgetStep';
 import { supabase } from '@/lib/supabase';
 
@@ -16,57 +16,36 @@ interface MultiStepFormProps {
 }
 
 const STEPS = [
-  { id: 1, title: 'Basic Info', description: 'Personal details and emergency contact' },
-  { id: 2, title: 'Preferences', description: 'Travel style and accommodation preferences' },
-  { id: 3, title: 'Personality', description: 'Travel personality and interests' },
-  { id: 4, title: 'Restrictions', description: 'Dietary, medical, and accessibility needs' },
-  { id: 5, title: 'Budget', description: 'Budget range and payment preferences' }
+  { id: 1, title: 'Basic Info', description: 'Name, gender, and age' },
+  { id: 2, title: 'Your Vibe', description: 'Activities and places you love' },
+  { id: 3, title: 'Food Talk', description: 'Food preferences and restrictions' },
+  { id: 4, title: 'Travel Soul', description: 'Personality and planning style' },
+  { id: 5, title: 'Budget', description: 'Spending style and travel companions' }
 ];
 
 const defaultUserPreferences: UserPreferences = {
   basicInfo: {
     firstName: '',
     lastName: '',
-    dateOfBirth: '',
-    nationality: '',
-    phone: '',
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: ''
-    }
+    gender: '',
+    ageGroup: ''
   },
   preferences: {
-    travelStyle: [],
-    accommodationType: [],
-    transportPreference: [],
-    groupSize: '',
-    planningStyle: '',
-    activityLevel: ''
+    activities: [],
+    placeTypes: []
   },
-  personality: {
-    adventurousness: 3,
-    socialness: 3,
-    comfortLevel: 3,
-    flexibilityLevel: 3,
-    interests: [],
-    languages: []
+  foodAndRestrictions: {
+    foodExcitement: [],
+    restrictions: [],
+    placesToAvoid: []
   },
-  restrictions: {
-    dietaryRestrictions: [],
-    medicalConditions: [],
-    mobilityRequirements: [],
-    religiousConsiderations: [],
-    allergies: []
+  personalityAndStyle: {
+    travelPersonality: [],
+    planningStyle: ''
   },
   budget: {
-    dailyBudget: {
-      min: 0,
-      max: 0
-    },
-    currency: '',
-    budgetPriorities: [],
-    paymentMethods: []
+    spendingStyle: '',
+    travelWith: ''
   },
   completedSteps: [],
   isComplete: false
@@ -183,17 +162,17 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
         );
       case 3:
         return (
-          <PersonalityStep
-            data={formData.personality}
-            updateData={(data) => updateStepData({ personality: data as Personality })}
+          <FoodAndRestrictionsStep
+            data={formData.foodAndRestrictions}
+            updateData={(data) => updateStepData({ foodAndRestrictions: data as FoodAndRestrictions })}
             {...commonProps}
           />
         );
       case 4:
         return (
-          <RestrictionsStep
-            data={formData.restrictions}
-            updateData={(data) => updateStepData({ restrictions: data as Restrictions })}
+          <PersonalityStep
+            data={formData.personalityAndStyle}
+            updateData={(data) => updateStepData({ personalityAndStyle: data as PersonalityAndStyle })}
             {...commonProps}
           />
         );

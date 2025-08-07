@@ -4,121 +4,173 @@ import React, { useState } from 'react';
 import { FormStepProps, TravelPreferences } from '@/types/preferences';
 import { Button } from '@/components/ui/Button';
 
-const TRAVEL_STYLES = [
-  'Adventure', 'Luxury', 'Budget', 'Cultural', 'Nature', 'City Break', 
-  'Beach', 'Mountain', 'Historical', 'Food & Wine', 'Photography', 'Wellness'
+const ACTIVITIES = [
+  { emoji: '🗺️', label: 'Exploring cities' },
+  { emoji: '🏞️', label: 'Nature' },
+  { emoji: '🏖️', label: 'Beaches' },
+  { emoji: '🎭', label: 'Art & Museums' },
+  { emoji: '🥾', label: 'Hiking' },
+  { emoji: '🍷', label: 'Wine tasting' },
+  { emoji: '🍽️', label: 'Foodie experiences' },
+  { emoji: '🏛️', label: 'Historical sites' },
+  { emoji: '🎵', label: 'Music & Nightlife' },
+  { emoji: '📸', label: 'Photography' },
+  { emoji: '🛍️', label: 'Shopping' },
+  { emoji: '🧘', label: 'Wellness & Spa' }
 ];
 
-const ACCOMMODATION_TYPES = [
-  'Hotels', 'Hostels', 'Airbnb', 'Resorts', 'Camping', 'Bed & Breakfast',
-  'Boutique Hotels', 'Vacation Rentals', 'Guesthouses'
+const PLACE_TYPES = [
+  {
+    title: 'Big cities buzzing with life',
+    description: 'Urban energy, skylines, and endless possibilities',
+    emoji: '🏙️'
+  },
+  {
+    title: 'Calm countryside',
+    description: 'Rolling hills, peaceful villages, and slow living',
+    emoji: '🌾'
+  },
+  {
+    title: 'Remote off-grid escapes',
+    description: 'Untouched wilderness and digital detox',
+    emoji: '🏕️'
+  },
+  {
+    title: 'Coastal & beach towns',
+    description: 'Ocean breeze, sandy shores, and seaside charm',
+    emoji: '🏖️'
+  },
+  {
+    title: 'Mountain retreats',
+    description: 'Fresh air, stunning views, and alpine adventures',
+    emoji: '🏔️'
+  },
+  {
+    title: 'Cultural heritage sites',
+    description: 'Ancient history, traditions, and timeless stories',
+    emoji: '🏺'
+  }
 ];
 
-const TRANSPORT_PREFERENCES = [
-  'Flight', 'Train', 'Bus', 'Car Rental', 'Motorcycle', 'Bicycle',
-  'Walking', 'Public Transport', 'Taxi/Rideshare'
-];
-
-const GROUP_SIZES = [
-  'Solo', 'Couple', 'Small Group (3-5)', 'Medium Group (6-10)', 'Large Group (10+)'
-];
-
-const PLANNING_STYLES = [
-  'Highly Planned', 'Somewhat Planned', 'Flexible', 'Spontaneous'
-];
-
-const ACTIVITY_LEVELS = [
-  'Low (Relaxed pace)', 'Moderate (Balanced)', 'High (Active)', 'Very High (Intense)'
-];
-
-interface CheckboxGroupProps {
+interface ChipSelectorProps {
   label: string;
-  options: string[];
+  description?: string;
+  options: Array<{ emoji: string; label: string }>;
   selected: string[];
   onChange: (selected: string[]) => void;
-  description?: string;
 }
 
-const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
+const ChipSelector: React.FC<ChipSelectorProps> = ({
   label,
+  description,
   options,
   selected,
-  onChange,
-  description
+  onChange
 }) => {
-  const handleChange = (option: string) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter(item => item !== option));
+  const handleToggle = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter(item => item !== value));
     } else {
-      onChange([...selected, option]);
+      onChange([...selected, value]);
     }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           {label}
-        </label>
+        </h3>
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
+          <p className="text-gray-600 dark:text-gray-400">{description}</p>
         )}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="flex flex-wrap gap-3">
         {options.map((option) => (
-          <label key={option} className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selected.includes(option)}
-              onChange={() => handleChange(option)}
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
-          </label>
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => handleToggle(option.label)}
+            className={`flex items-center space-x-2 px-4 py-3 rounded-full border-2 transition-all text-sm font-medium ${
+              selected.includes(option.label)
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+            }`}
+          >
+            <span className="text-lg">{option.emoji}</span>
+            <span>{option.label}</span>
+          </button>
         ))}
       </div>
     </div>
   );
 };
 
-interface RadioGroupProps {
+interface CardSelectorProps {
   label: string;
-  options: string[];
-  selected: string;
-  onChange: (selected: string) => void;
   description?: string;
+  options: Array<{ title: string; description: string; emoji: string }>;
+  selected: string[];
+  onChange: (selected: string[]) => void;
 }
 
-const RadioGroup: React.FC<RadioGroupProps> = ({
+const CardSelector: React.FC<CardSelectorProps> = ({
   label,
+  description,
   options,
   selected,
-  onChange,
-  description
+  onChange
 }) => {
+  const handleToggle = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter(item => item !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           {label}
-        </label>
+        </h3>
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
+          <p className="text-gray-600 dark:text-gray-400">{description}</p>
         )}
       </div>
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {options.map((option) => (
-          <label key={option} className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="radio"
-              name={label}
-              value={option}
-              checked={selected === option}
-              onChange={() => onChange(option)}
-              className="border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">{option}</span>
-          </label>
+          <button
+            key={option.title}
+            type="button"
+            onClick={() => handleToggle(option.title)}
+            className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md ${
+              selected.includes(option.title)
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
+            }`}
+          >
+            <div className="flex items-start space-x-3">
+              <span className="text-2xl">{option.emoji}</span>
+              <div>
+                <h4 className={`font-medium text-sm ${
+                  selected.includes(option.title)
+                    ? 'text-indigo-700 dark:text-indigo-300'
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  {option.title}
+                </h4>
+                <p className={`text-xs mt-1 ${
+                  selected.includes(option.title)
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {option.description}
+                </p>
+              </div>
+            </div>
+          </button>
         ))}
       </div>
     </div>
@@ -134,13 +186,13 @@ export const PreferencesStep: React.FC<FormStepProps<TravelPreferences>> = ({
 }) => {
   const [formData, setFormData] = useState<TravelPreferences>(data);
 
-  const handleCheckboxChange = (field: keyof TravelPreferences, selected: string[]) => {
-    const newData = { ...formData, [field]: selected };
+  const handleActivitiesChange = (activities: string[]) => {
+    const newData = { ...formData, activities };
     setFormData(newData);
   };
 
-  const handleRadioChange = (field: keyof TravelPreferences, selected: string) => {
-    const newData = { ...formData, [field]: selected };
+  const handlePlaceTypesChange = (placeTypes: string[]) => {
+    const newData = { ...formData, placeTypes };
     setFormData(newData);
   };
 
@@ -155,66 +207,38 @@ export const PreferencesStep: React.FC<FormStepProps<TravelPreferences>> = ({
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Travel Preferences</h2>
-        <p className="text-gray-600 dark:text-gray-400">Tell us about your travel style and preferences.</p>
+    <div className="space-y-10">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          Let&apos;s find your vibe ✨
+        </h2>
+        <p className="text-lg text-gray-600 dark:text-gray-400">
+          Tell us what makes your heart race when you travel
+        </p>
       </div>
 
-      <CheckboxGroup
-        label="Travel Styles"
-        description="What types of travel experiences appeal to you? (Select all that apply)"
-        options={TRAVEL_STYLES}
-        selected={formData.travelStyle}
-        onChange={(selected) => handleCheckboxChange('travelStyle', selected)}
+      <ChipSelector
+        label="What activities do you love on a trip?"
+        description="Select all that spark joy (you can choose multiple!)"
+        options={ACTIVITIES}
+        selected={formData.activities}
+        onChange={handleActivitiesChange}
       />
 
-      <CheckboxGroup
-        label="Accommodation Preferences"
-        description="What types of accommodations do you prefer?"
-        options={ACCOMMODATION_TYPES}
-        selected={formData.accommodationType}
-        onChange={(selected) => handleCheckboxChange('accommodationType', selected)}
-      />
-
-      <CheckboxGroup
-        label="Transportation Preferences"
-        description="How do you prefer to travel?"
-        options={TRANSPORT_PREFERENCES}
-        selected={formData.transportPreference}
-        onChange={(selected) => handleCheckboxChange('transportPreference', selected)}
-      />
-
-      <RadioGroup
-        label="Preferred Group Size"
-        description="How do you usually travel?"
-        options={GROUP_SIZES}
-        selected={formData.groupSize}
-        onChange={(selected) => handleRadioChange('groupSize', selected)}
-      />
-
-      <RadioGroup
-        label="Planning Style"
-        description="How do you prefer to plan your trips?"
-        options={PLANNING_STYLES}
-        selected={formData.planningStyle}
-        onChange={(selected) => handleRadioChange('planningStyle', selected)}
-      />
-
-      <RadioGroup
-        label="Activity Level"
-        description="What level of activity do you prefer during travel?"
-        options={ACTIVITY_LEVELS}
-        selected={formData.activityLevel}
-        onChange={(selected) => handleRadioChange('activityLevel', selected)}
+      <CardSelector
+        label="What kind of places make you feel alive?"
+        description="Choose the environments that call to your soul"
+        options={PLACE_TYPES}
+        selected={formData.placeTypes}
+        onChange={handlePlaceTypesChange}
       />
 
       <div className="flex justify-between pt-6">
         <Button variant="outline" onClick={handlePrevious}>
-          Previous
+          ← Back
         </Button>
-        <Button onClick={handleNext}>
-          {isLast ? 'Complete' : 'Next Step'}
+        <Button onClick={handleNext} size="lg" className="px-8">
+          {isLast ? 'Complete Setup' : 'Next: Food Talk →'}
         </Button>
       </div>
     </div>
