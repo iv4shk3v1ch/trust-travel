@@ -8,6 +8,7 @@ import { FoodAndRestrictionsStep } from './FoodAndRestrictionsStep';
 import { PersonalityStep } from './PersonalityStep';
 import { BudgetStep } from './BudgetStep';
 import { supabase } from '@/lib/supabase';
+import { saveProfile } from '@/lib/database';
 
 interface MultiStepFormProps {
   onComplete: (data: UserPreferences) => void;
@@ -67,9 +68,12 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
   const saveProgress = async (data: UserPreferences) => {
     if (!isNewUser) {
       try {
+        // Save to both database and user metadata for now
+        await saveProfile(data);
+        
+        // Also keep in user metadata as backup
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Save to Supabase user metadata or a separate table
           await supabase.auth.updateUser({
             data: { preferences: data }
           });
@@ -119,7 +123,10 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
         completedSteps: STEPS.map(step => step.id)
       };
       
-      // Save final data
+      // Save to database
+      await saveProfile(finalData);
+      
+      // Also save to user metadata as backup
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.auth.updateUser({

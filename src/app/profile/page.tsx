@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { MultiStepForm } from '@/components/forms/MultiStepForm';
 import { UserPreferences } from '@/types/preferences';
 import { supabase } from '@/lib/supabase';
+import { loadProfile, saveProfile } from '@/lib/database';
 import { Button } from '@/components/ui/Button';
 
 export default function ProfilePage() {
@@ -21,10 +22,26 @@ export default function ProfilePage() {
         return;
       }
 
-      // Load existing preferences
-      const preferences = session.user.user_metadata?.preferences;
-      if (preferences) {
-        setCurrentPreferences(preferences);
+      try {
+        // First try to load from database
+        const preferences = await loadProfile();
+        
+        if (preferences) {
+          setCurrentPreferences(preferences);
+        } else {
+          // Fallback to user metadata if database doesn't have data
+          const fallbackPreferences = session.user.user_metadata?.preferences;
+          if (fallbackPreferences) {
+            setCurrentPreferences(fallbackPreferences);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        // Fallback to user metadata on database error
+        const fallbackPreferences = session.user.user_metadata?.preferences;
+        if (fallbackPreferences) {
+          setCurrentPreferences(fallbackPreferences);
+        }
       }
       
       setLoading(false);
@@ -35,6 +52,10 @@ export default function ProfilePage() {
 
   const handleUpdateComplete = async (preferences: UserPreferences) => {
     try {
+      // Save to database first
+      await saveProfile(preferences);
+      
+      // Also update user metadata as backup
       await supabase.auth.updateUser({
         data: { preferences }
       });

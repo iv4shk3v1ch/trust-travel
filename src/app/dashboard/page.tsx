@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -38,11 +37,6 @@ export default function DashboardPage() {
 
     return () => subscription.unsubscribe();
   }, [router]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
 
   if (loading) {
     return (
@@ -120,6 +114,26 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* Travel Companions Section */}
+        <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                🤝 Find Travel Companions
+              </h3>
+              <p className="text-blue-700 dark:text-blue-300">
+                Connect with like-minded travelers who share your interests and travel style
+              </p>
+            </div>
+            <Link 
+              href="/search"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Find Travelers
+            </Link>
+          </div>
+        </div>
       </div>
       
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -134,8 +148,14 @@ export default function DashboardPage() {
             Manage Profile
           </Link>
           <Link 
-            href="/test-env"
+            href="/search"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Find Travel Companions
+          </Link>
+          <Link 
+            href="/test-env"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             Test Environment
           </Link>

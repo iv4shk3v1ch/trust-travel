@@ -142,17 +142,40 @@ const TagInput: React.FC<TagInputProps> = ({
             ))}
           </div>
         )}
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white"
-        />
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Type and press Enter to add. Press Backspace to remove.
-        </p>
+        <div className="relative">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="w-full px-4 py-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white"
+          />
+          {inputValue.trim() && (
+            <button
+              type="button"
+              onClick={() => {
+                if (inputValue.trim() && !value.includes(inputValue.trim())) {
+                  onChange([...value, inputValue.trim()]);
+                  setInputValue('');
+                }
+              }}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Add
+            </button>
+          )}
+        </div>
+        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center">
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Enter</kbd>
+            <span className="ml-1">to add</span>
+          </div>
+          <div className="flex items-center">
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Backspace</kbd>
+            <span className="ml-1">to remove last</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -222,7 +245,7 @@ export const FoodAndRestrictionsStep: React.FC<FormStepProps<FoodAndRestrictions
       <TagInput
         label="Any places you avoid?"
         description="Tell us about environments or situations you&apos;d rather skip"
-        placeholder="e.g., too crowded, nightlife-heavy, cold weather"
+        placeholder="Type here, then press Enter to add (e.g., crowded areas, nightlife)"
         value={formData.placesToAvoid}
         onChange={handlePlacesToAvoidChange}
       />
