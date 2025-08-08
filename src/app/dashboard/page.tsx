@@ -115,6 +115,26 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Travel Planning Section */}
+        <div className="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg p-6 border border-indigo-200 dark:border-indigo-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 mb-2">
+                🗺️ Plan Your Trento Adventure
+              </h3>
+              <p className="text-indigo-700 dark:text-indigo-300">
+                Create a personalized itinerary for your upcoming trip to Trento
+              </p>
+            </div>
+            <Link 
+              href="/plan-trip"
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-all font-medium transform hover:scale-105"
+            >
+              Plan Trip
+            </Link>
+          </div>
+        </div>
+
         {/* Travel Companions Section */}
         <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
           <div className="flex items-center justify-between">
@@ -141,6 +161,12 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div className="flex flex-wrap gap-4">
+          <Link 
+            href="/plan-trip"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
+          >
+            Plan New Trip
+          </Link>
           <Link 
             href="/profile"
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
