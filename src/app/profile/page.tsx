@@ -52,18 +52,23 @@ export default function ProfilePage() {
 
   const handleUpdateComplete = async (preferences: UserPreferences) => {
     try {
+      console.log('Starting profile update with preferences:', preferences);
+      
       // Save to database first
       await saveProfile(preferences);
+      console.log('Database save completed successfully');
       
       // Also update user metadata as backup
       await supabase.auth.updateUser({
         data: { preferences }
       });
+      console.log('User metadata updated successfully');
       
       setCurrentPreferences(preferences);
       setEditing(false);
     } catch (error) {
       console.error('Error updating preferences:', error);
+      alert('Failed to save profile. Please try again.');
     }
   };
 

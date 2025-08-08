@@ -70,8 +70,8 @@ export function transformFormDataToProfile(
     food_restrictions: formData.foodAndRestrictions.restrictions,
     avoid_places: formData.foodAndRestrictions.placesToAvoid,
     personality_traits: formData.personalityAndStyle.travelPersonality,
-    trip_style: planningToTrip[formData.personalityAndStyle.planningStyle as keyof typeof planningToTrip] || 'mixed',
-    travel_with: formData.budget.travelWith
+    trip_style: planningToTrip[formData.personalityAndStyle.planningStyle as keyof typeof planningToTrip] || 'mixed'
+    // travel_with: formData.budget.travelWith // Temporarily disabled - column may not exist yet
   };
 }
 
@@ -137,15 +137,20 @@ export async function saveProfile(formData: UserPreferences): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  console.log('Saving profile for user:', user.id);
   const profileData = transformFormDataToProfile(formData, user.id);
+  console.log('Transformed profile data:', profileData);
   
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .upsert(profileData, { onConflict: 'id' });
 
   if (error) {
+    console.error('Database save error:', error);
     throw new Error(`Failed to save profile: ${error.message}`);
   }
+  
+  console.log('Profile saved successfully:', data);
 }
 
 // Load profile from database

@@ -154,6 +154,12 @@ export default function DashboardPage() {
             Find Travel Companions
           </Link>
           <Link 
+            href="/connections"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            My Connections
+          </Link>
+          <Link 
             href="/test-env"
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
           >

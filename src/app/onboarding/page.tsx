@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { MultiStepForm } from '@/components/forms/MultiStepForm';
 import { UserPreferences } from '@/types/preferences';
 import { supabase } from '@/lib/supabase';
+import { saveProfile } from '@/lib/database';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -32,6 +33,12 @@ export default function OnboardingPage() {
 
   const handleComplete = async (preferences: UserPreferences) => {
     try {
+      console.log('Starting onboarding completion with preferences:', preferences);
+      
+      // Save to database first
+      await saveProfile(preferences);
+      console.log('Database save completed successfully');
+      
       // Update user metadata with completed preferences
       await supabase.auth.updateUser({
         data: { 
@@ -39,10 +46,12 @@ export default function OnboardingPage() {
           onboarding_completed: true 
         }
       });
+      console.log('User metadata updated successfully');
       
       router.push('/dashboard');
     } catch (error) {
       console.error('Error saving preferences:', error);
+      alert('Failed to save profile. Please try again.');
     }
   };
 
