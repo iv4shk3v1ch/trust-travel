@@ -7,7 +7,6 @@ import { PreferencesStep } from './PreferencesStep';
 import { FoodAndRestrictionsStep } from './FoodAndRestrictionsStep';
 import { PersonalityStep } from './PersonalityStep';
 import { BudgetStep } from './BudgetStep';
-import { supabase } from '@/lib/supabase';
 import { saveProfile } from '@/lib/database';
 
 interface MultiStepFormProps {
@@ -68,18 +67,12 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
   const saveProgress = async (data: UserPreferences) => {
     if (!isNewUser) {
       try {
-        // Save to both database and user metadata for now
+        console.log('MultiStepForm: Auto-saving progress...');
         await saveProfile(data);
-        
-        // Also keep in user metadata as backup
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.auth.updateUser({
-            data: { preferences: data }
-          });
-        }
+        console.log('MultiStepForm: Auto-save completed');
       } catch (error) {
-        console.error('Error saving progress:', error);
+        console.error('MultiStepForm: Error saving progress:', error);
+        // Don't show alert for auto-save failures, just log them
       }
     }
   };
@@ -115,7 +108,9 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
   };
 
   const handleComplete = async () => {
+    console.log('🚀 MultiStepForm: handleComplete called');
     setIsLoading(true);
+    
     try {
       const finalData = {
         ...formData,
@@ -123,21 +118,26 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
         completedSteps: STEPS.map(step => step.id)
       };
       
-      // Save to database
-      await saveProfile(finalData);
+      console.log('🚀 MultiStepForm: Final data prepared:', finalData);
+      console.log('🚀 MultiStepForm: Starting save with timeout...');
       
-      // Also save to user metadata as backup
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.auth.updateUser({
-          data: { preferences: finalData }
-        });
-      }
+      // Add timeout to prevent infinite hanging
+      const savePromise = saveProfile(finalData);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Save operation timed out after 30 seconds')), 30000)
+      );
       
+      await Promise.race([savePromise, timeoutPromise]);
+      console.log('🚀 MultiStepForm: Database save completed successfully');
+      
+      console.log('🚀 MultiStepForm: Calling onComplete callback...');
       onComplete(finalData);
+      console.log('🚀 MultiStepForm: onComplete callback finished');
     } catch (error) {
-      console.error('Error completing form:', error);
+      console.error('🚀 MultiStepForm: Error completing form:', error);
+      alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
+      console.log('🚀 MultiStepForm: Setting loading to false');
       setIsLoading(false);
     }
   };

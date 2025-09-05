@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -18,6 +19,7 @@ export default function DashboardPage() {
     );
   }
 
+  // REGULAR DASHBOARD - NO MORE ONBOARDING WIZARD
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -32,7 +34,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Main Actions Grid */}
+        {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           
           {/* Plan New Trip */}
@@ -86,6 +88,49 @@ export default function DashboardPage() {
               <p className="text-pink-100">Share your travel experiences</p>
             </div>
           </Link>
+
+        </div>
+
+        {/* Secondary Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Travel Network</h3>
+            <div className="space-y-3">
+              <div>
+                <Link href="/connections">
+                  <Button variant="outline" className="w-full justify-start">
+                    <span className="mr-2">🤝</span>
+                    My Connections
+                  </Button>
+                </Link>
+              </div>
+              <div>
+                <Button variant="outline" className="w-full justify-start" disabled>
+                  <span className="mr-2">�</span>
+                  Messages (Soon)
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Trip Management</h3>
+            <div className="space-y-3">
+              <div>
+                <Button variant="outline" className="w-full justify-start" disabled>
+                  <span className="mr-2">📋</span>
+                  My Trips (Soon)
+                </Button>
+              </div>
+              <div>
+                <Button variant="outline" className="w-full justify-start" disabled>
+                  <span className="mr-2">�</span>
+                  Trip Analytics (Soon)
+                </Button>
+              </div>
+            </div>
+          </div>
 
         </div>
 

@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 import { saveProfile } from '@/lib/database';
 import { UserPreferences } from '@/types/preferences';
+import type { User } from '@/types';
 
 interface QuickOnboardingWizardProps {
   onComplete: () => void;
 }
 
 // Transform wizard data to UserPreferences format that the database expects
-function transformWizardDataToUserPreferences(data: { ageGroup: string; personalityTraits: string[]; tripStyle: string }): UserPreferences {
+async function transformWizardDataToUserPreferences(data: { ageGroup: string; personalityTraits: string[]; tripStyle: string }, user: User | null): Promise<UserPreferences> {
   // Convert trip style to planning style
   const tripStyleMap: Record<string, string> = {
     'Planned': 'I plan everything',
@@ -19,10 +20,22 @@ function transformWizardDataToUserPreferences(data: { ageGroup: string; personal
     'Spontaneous': 'I go with the flow'
   };
 
+  // Get the user's name from auth data
+  let firstName = '';
+  let lastName = '';
+  
+  if (user?.name) {
+    const nameParts = user.name.split(' ');
+    firstName = nameParts[0] || '';
+    lastName = nameParts.slice(1).join(' ') || '';
+  }
+
+  console.log('Using name for profile:', { firstName, lastName, fullName: user?.name });
+
   return {
     basicInfo: {
-      firstName: '', // Will be filled from auth
-      lastName: '',  // Will be filled from auth
+      firstName, // Use actual name from auth
+      lastName,  // Use actual name from auth
       gender: 'Prefer not to say',
       ageGroup: data.ageGroup
     },
@@ -96,7 +109,7 @@ function QuickOnboardingWizard({ onComplete }: QuickOnboardingWizardProps) {
             console.log('Using localStorage user for save');
             setSaving(true);
             try {
-              const userPreferences = transformWizardDataToUserPreferences(formData);
+              const userPreferences = await transformWizardDataToUserPreferences(formData, null);
               await saveProfile(userPreferences);
               console.log('Profile saved with localStorage user, completing');
               onComplete();
@@ -123,7 +136,7 @@ function QuickOnboardingWizard({ onComplete }: QuickOnboardingWizardProps) {
     setSaving(true);
     try {
       // Transform wizard data to UserPreferences format
-      const userPreferences = transformWizardDataToUserPreferences(formData);
+      const userPreferences = await transformWizardDataToUserPreferences(formData, user);
       console.log('Transformed user preferences:', userPreferences);
       
       // Use the existing saveProfile function that handles authentication and RLS
@@ -190,7 +203,9 @@ function QuickOnboardingWizard({ onComplete }: QuickOnboardingWizardProps) {
                 { emoji: '🎨', label: 'Artsy' },
                 { emoji: '🕵️', label: 'Curious' },
                 { emoji: '🎉', label: 'Social' },
-                { emoji: '🤫', label: 'Introverted' }
+                { emoji: '🤫', label: 'Introverted' },
+                { emoji: '🏃', label: 'Sporty' },
+                { emoji: '📚', label: 'Intellectual' }
               ].map((trait) => (
                 <button
                   key={trait.label}

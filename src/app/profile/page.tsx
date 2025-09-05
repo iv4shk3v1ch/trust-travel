@@ -169,9 +169,9 @@ export default function ProfilePage() {
                   Basic Information
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Name:</span> {currentPreferences.basicInfo.firstName} {currentPreferences.basicInfo.lastName}</p>
-                  <p><span className="font-medium">Gender:</span> {currentPreferences.basicInfo.gender}</p>
-                  <p><span className="font-medium">Age Group:</span> {currentPreferences.basicInfo.ageGroup}</p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Name:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.firstName} {currentPreferences.basicInfo.lastName}</span></p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Gender:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.gender}</span></p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Age Group:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.ageGroup}</span></p>
                 </div>
               </div>
 
@@ -219,8 +219,8 @@ export default function ProfilePage() {
                   Food & Dining
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Excited by:</span> {currentPreferences.foodAndRestrictions.foodExcitement.slice(0, 2).join(', ')}{currentPreferences.foodAndRestrictions.foodExcitement.length > 2 ? '...' : ''}</p>
-                  <p><span className="font-medium">Restrictions:</span> {currentPreferences.foodAndRestrictions.restrictions.length > 0 ? currentPreferences.foodAndRestrictions.restrictions.slice(0, 2).join(', ') : 'None'}</p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Excited by:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.foodAndRestrictions.foodExcitement.slice(0, 2).join(', ')}{currentPreferences.foodAndRestrictions.foodExcitement.length > 2 ? '...' : ''}</span></p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Restrictions:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.foodAndRestrictions.restrictions.length > 0 ? currentPreferences.foodAndRestrictions.restrictions.slice(0, 2).join(', ') : 'None'}</span></p>
                 </div>
               </div>
 
@@ -237,7 +237,7 @@ export default function ProfilePage() {
                       </span>
                     ))}
                   </div>
-                  <p><span className="font-medium">Planning Style:</span> {currentPreferences.personalityAndStyle.planningStyle}</p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Planning Style:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.personalityAndStyle.planningStyle}</span></p>
                 </div>
               </div>
 
@@ -247,8 +247,8 @@ export default function ProfilePage() {
                   Budget & Travel Style
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Spending Style:</span> {currentPreferences.budget.spendingStyle}</p>
-                  <p><span className="font-medium">Usually travels:</span> {currentPreferences.budget.travelWith}</p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Spending Style:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.budget.spendingStyle}</span></p>
+                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Usually travels:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.budget.travelWith}</span></p>
                 </div>
               </div>
             </div>
