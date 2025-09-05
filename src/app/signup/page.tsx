@@ -53,10 +53,12 @@ export default function SignupPage() {
       }
 
       if (data.user) {
+        // Don't create profile here - let the onboarding wizard handle it
+        // This avoids database permission issues
         setSuccess(true);
-        // Redirect new users to onboarding
+        // Redirect new users to login (they'll be redirected to onboarding automatically)
         setTimeout(() => {
-          router.push('/onboarding');
+          router.push('/login?message=Please log in to complete your setup');
         }, 2000);
       }
     } catch (err) {
@@ -77,7 +79,7 @@ export default function SignupPage() {
               Account Created!
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Welcome to TrustTravel! Setting up your profile...
+              Welcome to TrustTravel! Please log in to complete your personalized setup.
             </p>
           </div>
         </div>

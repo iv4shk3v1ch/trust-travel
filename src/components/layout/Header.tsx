@@ -1,36 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/hooks/useAuth';
 
 export const Header: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Get current user
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      setLoading(false);
-    };
-
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, loading, logout } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -91,7 +73,7 @@ export const Header: React.FC = () => {
               // Logged in user
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {user.user_metadata?.full_name || user.email}
+                  {user.name || user.email}
                 </span>
                 <button 
                   onClick={handleLogout}

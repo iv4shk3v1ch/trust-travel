@@ -1,74 +1,48 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { MultiStepForm } from '@/components/forms/MultiStepForm';
-import { UserPreferences } from '@/types/preferences';
-import { supabase } from '@/lib/supabase';
-import { saveProfile } from '@/lib/database';
+import { useAuth } from '@/hooks/useAuth';
+import QuickOnboardingWizard from '@/components/wizard/QuickOnboardingWizardSimple';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { user, loading, clearOnboardingError } = useAuth();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-      
-      // Check if user already has preferences set up
-      if (session.user.user_metadata?.preferences?.isComplete) {
-        router.push('/dashboard');
-        return;
-      }
-      
-      setLoading(false);
-    };
+  // Debug logging
+  console.log('OnboardingPage render - user:', user);
+  console.log('OnboardingPage render - loading:', loading);
+  console.log('User exists in onboarding:', !!user);
 
-    checkAuth();
-  }, [router]);
-
-  const handleComplete = async (preferences: UserPreferences) => {
-    try {
-      console.log('Starting onboarding completion with preferences:', preferences);
-      
-      // Save to database first
-      await saveProfile(preferences);
-      console.log('Database save completed successfully');
-      
-      // Update user metadata with completed preferences
-      await supabase.auth.updateUser({
-        data: { 
-          preferences,
-          onboarding_completed: true 
-        }
-      });
-      console.log('User metadata updated successfully');
-      
+  const handleComplete = () => {
+    console.log('OnboardingPage handleComplete called');
+    console.log('User at completion:', user);
+    
+    // Clear the onboarding error state
+    clearOnboardingError();
+    
+    // Force a delay before redirect to ensure database changes are propagated
+    setTimeout(() => {
+      console.log('Redirecting to dashboard...');
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      alert('Failed to save profile. Please try again.');
-    }
+    }, 1000); // 1 second delay
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Setting up your profile...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <MultiStepForm
-        onComplete={handleComplete}
-        isNewUser={true}
-      />
-    </div>
-  );
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+
+  return <QuickOnboardingWizard onComplete={handleComplete} />;
 }

@@ -2,25 +2,24 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { MultiStepForm } from '@/components/forms/MultiStepForm';
 import { UserPreferences } from '@/types/preferences';
-import { supabase } from '@/lib/supabase';
 import { loadProfile, saveProfile } from '@/lib/database';
 import { Button } from '@/components/ui/Button';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { logout } = useAuth();
+  const { user, loading: authLoading } = useAuthGuard();
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [currentPreferences, setCurrentPreferences] = useState<UserPreferences | null>(null);
 
   useEffect(() => {
     const loadUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
+      if (!user) return;
 
       try {
         // First try to load from database
@@ -28,27 +27,18 @@ export default function ProfilePage() {
         
         if (preferences) {
           setCurrentPreferences(preferences);
-        } else {
-          // Fallback to user metadata if database doesn't have data
-          const fallbackPreferences = session.user.user_metadata?.preferences;
-          if (fallbackPreferences) {
-            setCurrentPreferences(fallbackPreferences);
-          }
         }
       } catch (error) {
         console.error('Error loading user data:', error);
-        // Fallback to user metadata on database error
-        const fallbackPreferences = session.user.user_metadata?.preferences;
-        if (fallbackPreferences) {
-          setCurrentPreferences(fallbackPreferences);
-        }
       }
       
       setLoading(false);
     };
 
-    loadUserData();
-  }, [router]);
+    if (!authLoading) {
+      loadUserData();
+    }
+  }, [user, authLoading]);
 
   const handleUpdateComplete = async (preferences: UserPreferences) => {
     try {
@@ -57,12 +47,6 @@ export default function ProfilePage() {
       // Save to database first
       await saveProfile(preferences);
       console.log('Database save completed successfully');
-      
-      // Also update user metadata as backup
-      await supabase.auth.updateUser({
-        data: { preferences }
-      });
-      console.log('User metadata updated successfully');
       
       setCurrentPreferences(preferences);
       setEditing(false);
@@ -73,8 +57,12 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   if (loading) {
