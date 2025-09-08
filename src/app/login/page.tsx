@@ -19,34 +19,23 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    // Basic validation
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log('Attempting login with:', email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error);
         setError(error.message);
         return;
       }
 
       if (data.user) {
-        console.log('Login successful, redirecting to dashboard');
         router.push('/dashboard');
       }
     } catch (err) {
-      console.error('Unexpected login error:', err);
       setError('An unexpected error occurred');
+      console.error(err);
     } finally {
       setLoading(false);
     }

@@ -1,22 +1,41 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { TravelPlanForm } from '@/components/forms/travel-plan/TravelPlanForm';
 import { TravelPlan } from '@/types/travel-plan';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 
 export default function PlanTripPage() {
   const router = useRouter();
-  const { user, loading } = useAuthGuard();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handlePlanComplete = async (travelPlan: TravelPlan) => {
     try {
       console.log('Travel plan completed:', travelPlan);
       
-      // TODO: Save to database when travel_plans table is implemented
-      // For now, just redirect to dashboard
+      // For now, just store in user metadata
+      // Later we can create a separate travel_plans table
+      await supabase.auth.updateUser({
+        data: { 
+          currentTravelPlan: travelPlan,
+          travelPlanUpdated: new Date().toISOString()
+        }
+      });
       
       // Redirect to a success page or dashboard with trip recommendations
       router.push('/dashboard?tripPlanned=true');

@@ -1,21 +1,36 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { ProfileCompletenessChip } from '@/components/ui/ProfileCompletenessChip';
+import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export const Header: React.FC = () => {
-  const { user, loading, logout } = useAuth();
-  const { profile } = useUserProfile(user?.id);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Get current user
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setLoading(false);
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    await supabase.auth.signOut();
   };
 
   return (
@@ -75,9 +90,8 @@ export const Header: React.FC = () => {
             ) : user ? (
               // Logged in user
               <div className="flex items-center space-x-4">
-                <ProfileCompletenessChip profile={profile} />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {user.name || user.email}
+                  {user.user_metadata?.full_name || user.email}
                 </span>
                 <button 
                   onClick={handleLogout}

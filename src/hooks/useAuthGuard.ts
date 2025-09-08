@@ -1,20 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './useAuth';
 
 export function useAuthGuard() {
-  const { user, loading, error } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (error === 'NEEDS_ONBOARDING') {
-        router.push('/onboarding');
+      } else {
+        setIsReady(true);
       }
     }
-  }, [user, loading, error, router]);
-  
-  return { user, loading };
+  }, [user, loading, router]);
+
+  return {
+    loading: loading || !isReady,
+    user
+  };
 }

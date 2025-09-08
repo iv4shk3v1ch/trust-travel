@@ -25,19 +25,12 @@ export function transformFormDataToProfile(
 ): ProfileData {
   // Convert age group to approximate age number
   const ageGroupToAge: Record<string, number> = {
-    // Wizard format (new)
-    '18-24': 22,
-    '25-34': 30,
-    '35-44': 40,
-    '45-54': 50,
-    '55-64': 60,
-    '65+': 70,
-    // Old format (legacy)
     '18-25': 22,
     '26-35': 30,
     '36-45': 40,
     '46-55': 50,
-    '56-65': 60
+    '56-65': 60,
+    '65+': 70
   };
 
   const selectedAge = ageGroupToAge[formData.basicInfo.ageGroup];
@@ -84,13 +77,13 @@ export function transformFormDataToProfile(
 
 // Transform database profile back to form data
 export function transformProfileToFormData(profile: ProfileData): UserPreferences {
-  // Convert age to age group (using new wizard format)
+  // Convert age to age group
   const ageToAgeGroup = (age: number): string => {
-    if (age <= 24) return '18-24';
-    if (age <= 34) return '25-34';
-    if (age <= 44) return '35-44';
-    if (age <= 54) return '45-54';
-    if (age <= 64) return '55-64';
+    if (age <= 25) return '18-25';
+    if (age <= 35) return '26-35';
+    if (age <= 45) return '36-45';
+    if (age <= 55) return '46-55';
+    if (age <= 65) return '56-65';
     return '65+';
   };
 
@@ -141,38 +134,23 @@ export function transformProfileToFormData(profile: ProfileData): UserPreference
 
 // Save profile to database
 export async function saveProfile(formData: UserPreferences): Promise<void> {
-  console.log('🔧 saveProfile: Starting save process...');
-  console.log('🔧 saveProfile: Input data:', formData);
-  
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.error('🔧 saveProfile: No authenticated user found');
-    throw new Error('User not authenticated');
-  }
+  if (!user) throw new Error('User not authenticated');
 
-  console.log('🔧 saveProfile: User authenticated, ID:', user.id);
+  console.log('Saving profile for user:', user.id);
+  const profileData = transformFormDataToProfile(formData, user.id);
+  console.log('Transformed profile data:', profileData);
   
-  try {
-    console.log('🔧 saveProfile: Transforming form data to profile...');
-    const profileData = transformFormDataToProfile(formData, user.id);
-    console.log('🔧 saveProfile: Transformed profile data:', profileData);
-    
-    console.log('🔧 saveProfile: Attempting database upsert...');
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert(profileData, { onConflict: 'id' });
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert(profileData, { onConflict: 'id' });
 
-    if (error) {
-      console.error('🔧 saveProfile: Database save error:', error);
-      throw new Error(`Failed to save profile: ${error.message}`);
-    }
-    
-    console.log('🔧 saveProfile: Database save successful!', data);
-    console.log('🔧 saveProfile: Save process completed successfully');
-  } catch (error) {
-    console.error('🔧 saveProfile: Caught error during save:', error);
-    throw error;
+  if (error) {
+    console.error('Database save error:', error);
+    throw new Error(`Failed to save profile: ${error.message}`);
   }
+  
+  console.log('Profile saved successfully:', data);
 }
 
 // Load profile from database

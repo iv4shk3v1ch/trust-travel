@@ -7,8 +7,8 @@ import { PreferencesStep } from './PreferencesStep';
 import { FoodAndRestrictionsStep } from './FoodAndRestrictionsStep';
 import { PersonalityStep } from './PersonalityStep';
 import { BudgetStep } from './BudgetStep';
+import { supabase } from '@/lib/supabase';
 import { saveProfile } from '@/lib/database';
-import { useProfileUpdateToasts } from '@/hooks/useProfileUpdateToasts';
 
 interface MultiStepFormProps {
   onComplete: (data: UserPreferences) => void;
@@ -63,18 +63,23 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
     ...initialData
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { saveProfileWithToasts } = useProfileUpdateToasts();
 
   // Auto-save progress for existing users
   const saveProgress = async (data: UserPreferences) => {
     if (!isNewUser) {
       try {
-        console.log('MultiStepForm: Auto-saving progress...');
+        // Save to both database and user metadata for now
         await saveProfile(data);
-        console.log('MultiStepForm: Auto-save completed');
+        
+        // Also keep in user metadata as backup
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.auth.updateUser({
+            data: { preferences: data }
+          });
+        }
       } catch (error) {
-        console.error('MultiStepForm: Error saving progress:', error);
-        // Don't show alert for auto-save failures, just log them
+        console.error('Error saving progress:', error);
       }
     }
   };
@@ -91,12 +96,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
 
     // Auto-save for existing users
     if (!isNewUser) {
-      // Use toast-enabled save for step updates
-      saveProfileWithToasts(newFormData).catch(error => {
-        console.error('MultiStepForm: Error saving progress with toasts:', error);
-        // Fallback to regular save if toast save fails
-        saveProgress(newFormData);
-      });
+      saveProgress(newFormData);
     }
   };
 
@@ -115,9 +115,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
   };
 
   const handleComplete = async () => {
-    console.log('🚀 MultiStepForm: handleComplete called');
     setIsLoading(true);
-    
     try {
       const finalData = {
         ...formData,
@@ -125,25 +123,21 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
         completedSteps: STEPS.map(step => step.id)
       };
       
-      console.log('🚀 MultiStepForm: Final data prepared:', finalData);
-      console.log('🚀 MultiStepForm: Starting save with toasts...');
+      // Save to database
+      await saveProfile(finalData);
       
-      // Use toast-enabled save for final completion
-      const result = await saveProfileWithToasts(finalData);
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to save profile');
+      // Also save to user metadata as backup
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.auth.updateUser({
+          data: { preferences: finalData }
+        });
       }
       
-      console.log('🚀 MultiStepForm: Database save completed successfully', result);
-      
-      console.log('🚀 MultiStepForm: Calling onComplete callback...');
       onComplete(finalData);
-      console.log('🚀 MultiStepForm: onComplete callback finished');
     } catch (error) {
-      console.error('🚀 MultiStepForm: Error completing form:', error);
-      alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error completing form:', error);
     } finally {
-      console.log('🚀 MultiStepForm: Setting loading to false');
       setIsLoading(false);
     }
   };

@@ -2,24 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { MultiStepForm } from '@/components/forms/MultiStepForm';
 import { UserPreferences } from '@/types/preferences';
+import { supabase } from '@/lib/supabase';
 import { loadProfile, saveProfile } from '@/lib/database';
 import { Button } from '@/components/ui/Button';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { logout } = useAuth();
-  const { user, loading: authLoading } = useAuthGuard();
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [currentPreferences, setCurrentPreferences] = useState<UserPreferences | null>(null);
 
   useEffect(() => {
     const loadUserData = async () => {
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
 
       try {
         // First try to load from database
@@ -27,18 +28,27 @@ export default function ProfilePage() {
         
         if (preferences) {
           setCurrentPreferences(preferences);
+        } else {
+          // Fallback to user metadata if database doesn't have data
+          const fallbackPreferences = session.user.user_metadata?.preferences;
+          if (fallbackPreferences) {
+            setCurrentPreferences(fallbackPreferences);
+          }
         }
       } catch (error) {
         console.error('Error loading user data:', error);
+        // Fallback to user metadata on database error
+        const fallbackPreferences = session.user.user_metadata?.preferences;
+        if (fallbackPreferences) {
+          setCurrentPreferences(fallbackPreferences);
+        }
       }
       
       setLoading(false);
     };
 
-    if (!authLoading) {
-      loadUserData();
-    }
-  }, [user, authLoading]);
+    loadUserData();
+  }, [router]);
 
   const handleUpdateComplete = async (preferences: UserPreferences) => {
     try {
@@ -47,6 +57,12 @@ export default function ProfilePage() {
       // Save to database first
       await saveProfile(preferences);
       console.log('Database save completed successfully');
+      
+      // Also update user metadata as backup
+      await supabase.auth.updateUser({
+        data: { preferences }
+      });
+      console.log('User metadata updated successfully');
       
       setCurrentPreferences(preferences);
       setEditing(false);
@@ -57,12 +73,8 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    await supabase.auth.signOut();
+    router.push('/');
   };
 
   if (loading) {
@@ -169,9 +181,9 @@ export default function ProfilePage() {
                   Basic Information
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Name:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.firstName} {currentPreferences.basicInfo.lastName}</span></p>
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Gender:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.gender}</span></p>
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Age Group:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.basicInfo.ageGroup}</span></p>
+                  <p><span className="font-medium">Name:</span> {currentPreferences.basicInfo.firstName} {currentPreferences.basicInfo.lastName}</p>
+                  <p><span className="font-medium">Gender:</span> {currentPreferences.basicInfo.gender}</p>
+                  <p><span className="font-medium">Age Group:</span> {currentPreferences.basicInfo.ageGroup}</p>
                 </div>
               </div>
 
@@ -219,8 +231,8 @@ export default function ProfilePage() {
                   Food & Dining
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Excited by:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.foodAndRestrictions.foodExcitement.slice(0, 2).join(', ')}{currentPreferences.foodAndRestrictions.foodExcitement.length > 2 ? '...' : ''}</span></p>
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Restrictions:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.foodAndRestrictions.restrictions.length > 0 ? currentPreferences.foodAndRestrictions.restrictions.slice(0, 2).join(', ') : 'None'}</span></p>
+                  <p><span className="font-medium">Excited by:</span> {currentPreferences.foodAndRestrictions.foodExcitement.slice(0, 2).join(', ')}{currentPreferences.foodAndRestrictions.foodExcitement.length > 2 ? '...' : ''}</p>
+                  <p><span className="font-medium">Restrictions:</span> {currentPreferences.foodAndRestrictions.restrictions.length > 0 ? currentPreferences.foodAndRestrictions.restrictions.slice(0, 2).join(', ') : 'None'}</p>
                 </div>
               </div>
 
@@ -237,7 +249,7 @@ export default function ProfilePage() {
                       </span>
                     ))}
                   </div>
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Planning Style:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.personalityAndStyle.planningStyle}</span></p>
+                  <p><span className="font-medium">Planning Style:</span> {currentPreferences.personalityAndStyle.planningStyle}</p>
                 </div>
               </div>
 
@@ -247,8 +259,8 @@ export default function ProfilePage() {
                   Budget & Travel Style
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Spending Style:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.budget.spendingStyle}</span></p>
-                  <p><span className="font-medium text-gray-900 dark:text-gray-100">Usually travels:</span> <span className="text-gray-700 dark:text-gray-300">{currentPreferences.budget.travelWith}</span></p>
+                  <p><span className="font-medium">Spending Style:</span> {currentPreferences.budget.spendingStyle}</p>
+                  <p><span className="font-medium">Usually travels:</span> {currentPreferences.budget.travelWith}</p>
                 </div>
               </div>
             </div>

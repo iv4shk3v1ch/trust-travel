@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { supabase } from '@/lib/supabase';
 import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/lib/connections';
 import { Button } from '@/components/ui/Button';
@@ -23,7 +22,6 @@ interface UserProfile {
 
 export default function SearchPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuthGuard();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
@@ -73,16 +71,20 @@ export default function SearchPage() {
     };
 
     const loadData = async () => {
-      if (!user) return;
-
       try {
-        console.log('Current user ID:', user.id);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        console.log('Current user session:', session.user.id);
 
         // Load current user profile
         const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', session.user.id)
           .single();
 
         console.log('Current user profile query result:', userProfile, profileError);
@@ -104,7 +106,7 @@ export default function SearchPage() {
     };
 
     loadData();
-  }, [user]);
+  }, [router]);
 
   const calculateSimilarity = (user1: UserProfile, user2: UserProfile): number => {
     let score = 0;
