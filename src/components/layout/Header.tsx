@@ -3,9 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { ProfileCompletenessChip } from '@/components/ui/ProfileCompletenessChip';
 
 export const Header: React.FC = () => {
   const { user, loading, logout } = useAuth();
+  const { profile } = useUserProfile(user?.id);
 
   const handleLogout = async () => {
     try {
@@ -72,6 +75,7 @@ export const Header: React.FC = () => {
             ) : user ? (
               // Logged in user
               <div className="flex items-center space-x-4">
+                <ProfileCompletenessChip profile={profile} />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   {user.name || user.email}
                 </span>

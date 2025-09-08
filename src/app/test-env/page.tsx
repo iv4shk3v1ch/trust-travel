@@ -3,13 +3,108 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ProfileCompletenessChip } from '@/components/ui/ProfileCompletenessChip';
+import { useToast } from '@/components/ui/ToastManager';
 import { supabase } from '@/lib/supabase';
+import { UserPreferences } from '@/types/preferences';
 
 export default function TestEnvironmentPage() {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState('Not tested');
+  const { showToast, showProfileBoostToast } = useToast();
+
+  // Profile state toggles
+  const toggleProfileState = (useComplete: boolean) => {
+    localStorage.setItem('useCompleteProfile', useComplete.toString());
+    window.location.reload(); // Reload to apply changes
+  };
+
+  // Mock profile data for testing different scenarios
+  const incompleteProfile: UserPreferences = {
+    basicInfo: {
+      firstName: 'John',
+      lastName: '',
+      gender: '',
+      ageGroup: ''
+    },
+    preferences: {
+      activities: ['hiking'],
+      placeTypes: []
+    },
+    foodAndRestrictions: {
+      foodExcitement: [],
+      restrictions: [],
+      placesToAvoid: []
+    },
+    personalityAndStyle: {
+      travelPersonality: [],
+      planningStyle: ''
+    },
+    budget: {
+      spendingStyle: '',
+      travelWith: ''
+    },
+    completedSteps: [1],
+    isComplete: false
+  };
+
+  const partialProfile: UserPreferences = {
+    basicInfo: {
+      firstName: 'John',
+      lastName: 'Doe',
+      gender: 'male',
+      ageGroup: '25-34'
+    },
+    preferences: {
+      activities: ['hiking', 'photography'],
+      placeTypes: ['mountains']
+    },
+    foodAndRestrictions: {
+      foodExcitement: ['italian'],
+      restrictions: [],
+      placesToAvoid: []
+    },
+    personalityAndStyle: {
+      travelPersonality: [],
+      planningStyle: ''
+    },
+    budget: {
+      spendingStyle: '',
+      travelWith: ''
+    },
+    completedSteps: [1, 2, 3],
+    isComplete: false
+  };
+
+  const completeProfile: UserPreferences = {
+    basicInfo: {
+      firstName: 'John',
+      lastName: 'Doe',
+      gender: 'male',
+      ageGroup: '25-34'
+    },
+    preferences: {
+      activities: ['hiking', 'photography'],
+      placeTypes: ['mountains', 'cities']
+    },
+    foodAndRestrictions: {
+      foodExcitement: ['italian', 'local'],
+      restrictions: [],
+      placesToAvoid: []
+    },
+    personalityAndStyle: {
+      travelPersonality: ['adventurous'],
+      planningStyle: 'flexible'
+    },
+    budget: {
+      spendingStyle: 'mid-range',
+      travelWith: 'solo'
+    },
+    completedSteps: [1, 2, 3, 4, 5, 6],
+    isComplete: true
+  };
 
   const testAI = async () => {
     if (!prompt.trim()) return;
@@ -96,6 +191,88 @@ export default function TestEnvironmentPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Profile Completeness Demo */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+            Profile Completeness Demo
+          </h2>
+          
+          {/* Profile State Controls */}
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <h3 className="font-medium mb-3 text-blue-800 dark:text-blue-200">
+              Profile State Controls
+            </h3>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+              Switch between different profile states for testing the 63% completion issue:
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => toggleProfileState(false)}
+                variant="outline"
+                className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+              >
+                Use Incomplete Profile (63%)
+              </Button>
+              <Button
+                onClick={() => toggleProfileState(true)}
+                variant="outline"
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                Use Complete Profile (100%)
+              </Button>
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              Current: {localStorage.getItem('useCompleteProfile') === 'true' ? 'Complete Profile' : 'Incomplete Profile'}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <h3 className="font-medium mb-2 text-gray-900 dark:text-white">Incomplete Profile</h3>
+              <ProfileCompletenessChip profile={incompleteProfile} className="mx-auto" />
+              <p className="text-xs text-gray-500 mt-2">Only basic info started</p>
+            </div>
+            <div className="text-center">
+              <h3 className="font-medium mb-2 text-gray-900 dark:text-white">Partial Profile</h3>
+              <ProfileCompletenessChip profile={partialProfile} className="mx-auto" />
+              <p className="text-xs text-gray-500 mt-2">Basic info + some preferences</p>
+            </div>
+            <div className="text-center">
+              <h3 className="font-medium mb-2 text-gray-900 dark:text-white">Complete Profile</h3>
+              <ProfileCompletenessChip profile={completeProfile} className="mx-auto" />
+              <p className="text-xs text-gray-500 mt-2">All sections completed</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Toast Test Section */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+            Toast System Test
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              onClick={() => showToast({
+                message: 'Basic toast test message',
+                type: 'success',
+                emoji: '✅'
+              })}
+            >
+              Test Basic Toast
+            </Button>
+            <Button
+              onClick={() => showProfileBoostToast('activities', 13)}
+            >
+              Test Activities Toast
+            </Button>
+            <Button
+              onClick={() => showProfileBoostToast('foodExcitement', 8)}
+            >
+              Test Food Toast
+            </Button>
           </div>
         </div>
 

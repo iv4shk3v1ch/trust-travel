@@ -8,6 +8,7 @@ import { FoodAndRestrictionsStep } from './FoodAndRestrictionsStep';
 import { PersonalityStep } from './PersonalityStep';
 import { BudgetStep } from './BudgetStep';
 import { saveProfile } from '@/lib/database';
+import { useProfileUpdateToasts } from '@/hooks/useProfileUpdateToasts';
 
 interface MultiStepFormProps {
   onComplete: (data: UserPreferences) => void;
@@ -62,6 +63,7 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
     ...initialData
   });
   const [isLoading, setIsLoading] = useState(false);
+  const { saveProfileWithToasts } = useProfileUpdateToasts();
 
   // Auto-save progress for existing users
   const saveProgress = async (data: UserPreferences) => {
@@ -89,7 +91,12 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
 
     // Auto-save for existing users
     if (!isNewUser) {
-      saveProgress(newFormData);
+      // Use toast-enabled save for step updates
+      saveProfileWithToasts(newFormData).catch(error => {
+        console.error('MultiStepForm: Error saving progress with toasts:', error);
+        // Fallback to regular save if toast save fails
+        saveProgress(newFormData);
+      });
     }
   };
 
@@ -119,16 +126,15 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
       };
       
       console.log('🚀 MultiStepForm: Final data prepared:', finalData);
-      console.log('🚀 MultiStepForm: Starting save with timeout...');
+      console.log('🚀 MultiStepForm: Starting save with toasts...');
       
-      // Add timeout to prevent infinite hanging
-      const savePromise = saveProfile(finalData);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Save operation timed out after 30 seconds')), 30000)
-      );
+      // Use toast-enabled save for final completion
+      const result = await saveProfileWithToasts(finalData);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save profile');
+      }
       
-      await Promise.race([savePromise, timeoutPromise]);
-      console.log('🚀 MultiStepForm: Database save completed successfully');
+      console.log('🚀 MultiStepForm: Database save completed successfully', result);
       
       console.log('🚀 MultiStepForm: Calling onComplete callback...');
       onComplete(finalData);
