@@ -2,16 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { getMyConnections, getUsersWhoTrustMe, disconnectFromUser } from '@/lib/connections';
 import type { UserConnection, UserWhoTrustsMe } from '@/lib/connections';
 import { Button } from '@/components/ui/Button';
+import { TrustGraph } from '@/components/social/TrustGraph';
+import type { TrustNode, TrustLink } from '@/components/social/TrustGraph';
 
 export default function ConnectionsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [myConnections, setMyConnections] = useState<UserConnection[]>([]);
   const [whoTrustsMe, setWhoTrustsMe] = useState<UserWhoTrustsMe[]>([]);
-  const [activeTab, setActiveTab] = useState<'connections' | 'trustees'>('connections');
+  const [activeTab, setActiveTab] = useState<'connections' | 'trustees' | 'graph'>('connections');
 
   useEffect(() => {
     loadConnections();
@@ -31,6 +35,87 @@ export default function ConnectionsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper functions for graph data
+  const getGraphNodes = (): TrustNode[] => {
+    const nodes: TrustNode[] = [];
+    
+    // Add current user as center node
+    if (user) {
+      nodes.push({
+        id: user.id,
+        name: user.name || 'You',
+        avatar: '/default-avatar.png', // No avatar in current user schema
+        reviews: 0, // Could fetch from reviews count
+        isCurrentUser: true
+      });
+    }
+
+    // Add connections as nodes
+    myConnections.forEach(connection => {
+      nodes.push({
+        id: connection.target_user,
+        name: connection.profiles.full_name,
+        avatar: '/default-avatar.png', // No avatar in current schema
+        reviews: Math.floor(Math.random() * 50) + 1, // Mock data
+        isCurrentUser: false
+      });
+    });
+
+    // Add trustees as nodes (if not already in connections)
+    whoTrustsMe.forEach(trustee => {
+      if (!nodes.find(n => n.id === trustee.source_user)) {
+        nodes.push({
+          id: trustee.source_user,
+          name: trustee.profiles.full_name,
+          avatar: '/default-avatar.png', // No avatar in current schema
+          reviews: Math.floor(Math.random() * 30) + 1, // Mock data
+          isCurrentUser: false
+        });
+      }
+    });
+
+    return nodes;
+  };
+
+  const getGraphLinks = (): TrustLink[] => {
+    const links: TrustLink[] = [];
+    
+    if (!user) return links;
+
+    // Add links from current user to connections (outgoing trust)
+    myConnections.forEach(connection => {
+      links.push({
+        source: user.id,
+        target: connection.target_user,
+        strength: Math.random() * 0.5 + 0.5, // Random strength 0.5-1.0
+      });
+    });
+
+    // Add links from trustees to current user (incoming trust)
+    whoTrustsMe.forEach(trustee => {
+      links.push({
+        source: trustee.source_user,
+        target: user.id,
+        strength: Math.random() * 0.5 + 0.5, // Random strength 0.5-1.0
+      });
+    });
+
+    // Add some mutual connections (mock data)
+    for (let i = 0; i < Math.min(myConnections.length, 3); i++) {
+      for (let j = i + 1; j < Math.min(myConnections.length, i + 3); j++) {
+        if (Math.random() > 0.7) { // 30% chance of mutual connection
+          links.push({
+            source: myConnections[i].target_user,
+            target: myConnections[j].target_user,
+            strength: Math.random() * 0.3 + 0.2, // Weaker mutual connections
+          });
+        }
+      }
+    }
+
+    return links;
   };
 
   const handleDisconnect = async (userId: string) => {
@@ -212,6 +297,16 @@ export default function ConnectionsPage() {
           >
             Who Trusts Me ({whoTrustsMe.length})
           </button>
+          <button
+            onClick={() => setActiveTab('graph')}
+            className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'graph'
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            Trust Graph
+          </button>
         </div>
 
         {/* Content */}
@@ -255,7 +350,7 @@ export default function ConnectionsPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'trustees' ? (
           <div>
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -294,6 +389,25 @@ export default function ConnectionsPage() {
                 </div>
               </div>
             )}
+          </div>
+        ) : (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Trust Network Visualization
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Interactive graph showing your trust network and mutual connections.
+              </p>
+            </div>
+
+            <TrustGraph
+              nodes={getGraphNodes()}
+              links={getGraphLinks()}
+              width={800}
+              height={500}
+              className="mb-6"
+            />
           </div>
         )}
       </div>

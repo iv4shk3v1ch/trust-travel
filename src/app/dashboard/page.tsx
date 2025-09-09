@@ -63,7 +63,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           
           {/* Plan New Trip */}
           <Link href="/plan-trip">
@@ -75,6 +75,19 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-semibold">Plan New Trip</h3>
               </div>
               <p className="text-indigo-100">Create your perfect Trento itinerary</p>
+            </div>
+          </Link>
+
+          {/* Leave a Review */}
+          <Link href="/reviews">
+            <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all duration-200 cursor-pointer">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-2xl">⭐</span>
+                </div>
+                <h3 className="text-xl font-semibold">Leave a Review</h3>
+              </div>
+              <p className="text-pink-100">Share your experience with others</p>
             </div>
           </Link>
 
@@ -134,6 +147,12 @@ export default function DashboardPage() {
                 <Button variant="outline" className="w-full justify-start">
                   <span className="mr-2">➕</span>
                   Plan New Trip
+                </Button>
+              </Link>
+              <Link href="/reviews">
+                <Button variant="outline" className="w-full justify-start">
+                  <span className="mr-2">⭐</span>
+                  Leave a Review
                 </Button>
               </Link>
               <Button variant="outline" className="w-full justify-start" disabled>
