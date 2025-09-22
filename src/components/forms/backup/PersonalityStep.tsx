@@ -57,29 +57,11 @@ const TraitSelector: React.FC<TraitSelectorProps> = ({
   onChange,
   maxSelection = 3
 }) => {
-  console.log('=== TRAIT SELECTOR RENDER ===');
-  console.log('Selected array:', selected);
-  console.log('Selected length:', selected?.length);
-  console.log('Selected type:', typeof selected);
-  console.log('Max selection:', maxSelection);
-  
   const handleToggle = (value: string) => {
-    console.log('=== PERSONALITY TRAIT TOGGLE ===');
-    console.log('Clicked value:', value);
-    console.log('Current selected:', selected);
-    console.log('Current length:', (selected || []).length);
-    console.log('Max selection:', maxSelection);
-    
-    const currentSelected = selected || [];
-    
-    if (currentSelected.includes(value)) {
-      console.log('Removing value from selection');
-      onChange(currentSelected.filter(item => item !== value));
-    } else if (currentSelected.length < maxSelection) {
-      console.log('Adding value to selection');
-      onChange([...currentSelected, value]);
-    } else {
-      console.log('Cannot add - already at max selection');
+    if (selected.includes(value)) {
+      onChange(selected.filter(item => item !== value));
+    } else if (selected.length < maxSelection) {
+      onChange([...selected, value]);
     }
   };
 
@@ -93,43 +75,48 @@ const TraitSelector: React.FC<TraitSelectorProps> = ({
           <p className="text-gray-600 dark:text-gray-400">{description}</p>
         )}
         <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-1">
-          Select up to {maxSelection} that best describe you ({(selected || []).length}/{maxSelection})
+          Select up to {maxSelection} that best describe you ({selected.length}/{maxSelection})
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {options.map((option) => (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => handleToggle(option.label)}
-            disabled={!(selected || []).includes(option.label) && (selected || []).length >= maxSelection}
-            className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
-              (selected || []).includes(option.label)
-                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
-                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
-            }`}
-          >
-            <div className="flex items-start space-x-3">
-              <span className="text-2xl">{option.emoji}</span>
-              <div>
-                <h4 className={`font-medium text-sm ${
-                  selected.includes(option.label)
-                    ? 'text-indigo-700 dark:text-indigo-300'
-                    : 'text-gray-900 dark:text-white'
-                }`}>
-                  {option.label}
-                </h4>
-                <p className={`text-xs mt-1 ${
-                  selected.includes(option.label)
-                    ? 'text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {option.description}
-                </p>
+        {options.map((option) => {
+          const isSelected = selected.includes(option.label);
+          const isDisabled = !isSelected && selected.length >= maxSelection;
+          
+          return (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => handleToggle(option.label)}
+              disabled={isDisabled}
+              className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                isSelected
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
+              }`}
+            >
+              <div className="flex items-start space-x-3">
+                <span className="text-2xl">{option.emoji}</span>
+                <div>
+                  <h4 className={`font-medium text-sm ${
+                    isSelected
+                      ? 'text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-900 dark:text-white'
+                  }`}>
+                    {option.label}
+                  </h4>
+                  <p className={`text-xs mt-1 ${
+                    isSelected
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {option.description}
+                  </p>
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -205,20 +192,13 @@ export const PersonalityStep: React.FC<FormStepProps<PersonalityAndStyle>> = ({
   onPrevious,
   isLast
 }) => {
-  console.log('=== PERSONALITY STEP INITIAL DATA ===');
-  console.log('Initial data:', data);
-  console.log('Travel personality array:', data.travelPersonality);
-  console.log('Travel personality length:', data.travelPersonality?.length);
-  console.log('Travel personality type:', typeof data.travelPersonality);
-  
-  // Ensure we always have valid arrays
-  const initialData = {
+  // Ensure travelPersonality is always an array
+  const sanitizedData = {
     ...data,
-    travelPersonality: data.travelPersonality || [],
-    planningStyle: data.planningStyle || ''
+    travelPersonality: Array.isArray(data.travelPersonality) ? data.travelPersonality : []
   };
   
-  const [formData, setFormData] = useState<PersonalityAndStyle>(initialData);
+  const [formData, setFormData] = useState<PersonalityAndStyle>(sanitizedData);
 
   const handlePersonalityChange = (travelPersonality: string[]) => {
     const newData = { ...formData, travelPersonality };

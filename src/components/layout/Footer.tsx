@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export const Footer: React.FC = () => {
   return (
@@ -20,9 +21,9 @@ export const Footer: React.FC = () => {
               Quick Links
             </h4>
             <ul className="space-y-2">
-              <li><a href="/" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">Home</a></li>
-              <li><a href="/destinations" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">Destinations</a></li>
-              <li><a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">About</a></li>
+              <li><Link href="/" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">Home</Link></li>
+              <li><Link href="/destinations" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">Destinations</Link></li>
+              <li><Link href="/about" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">About</Link></li>
               <li><a href="/contact" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600">Contact</a></li>
             </ul>
           </div>

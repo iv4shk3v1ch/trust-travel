@@ -99,9 +99,10 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
     console.log('=== UPDATE STEP DATA ===');
     console.log('Current step:', currentStep);
     console.log('Step data received:', stepData);
+    console.log('Current formData before merge:', JSON.stringify(formData, null, 2));
     
     const newFormData = { ...formData, ...stepData };
-    console.log('New form data:', newFormData);
+    console.log('New form data after merge:', JSON.stringify(newFormData, null, 2));
     setFormData(newFormData);
     
     // Mark current step as completed
@@ -111,9 +112,9 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
       console.log('Marked step as completed:', currentStep);
     }
 
-    // Auto-save for existing users
+    // Auto-save for existing users - Use the updated data immediately
     if (!isNewUser) {
-      console.log('Triggering auto-save...');
+      console.log('Triggering auto-save with updated data...');
       saveProgress(newFormData);
     } else {
       console.log('Skipping auto-save (new user)');

@@ -254,17 +254,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* Development link */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4">
-          <Link href="/test-env">
-            <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
-              🔧 Test Environment
-            </button>
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { createChatCompletion } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {
@@ -27,8 +27,6 @@ export async function POST(request: NextRequest) {
 
     // Optional: Store the interaction in Supabase
     if (userId) {
-      const supabase = createServerClient();
-      
       const { error } = await supabase
         .from('ai_interactions')
         .insert([

@@ -68,16 +68,10 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
 
   // Auto-save progress for existing users
   const saveProgress = async (data: UserPreferences) => {
-    console.log('=== SAVE PROGRESS DEBUG ===');
-    console.log('isNewUser:', isNewUser);
-    console.log('Will save:', !isNewUser);
-    
     if (!isNewUser) {
       try {
-        console.log('Calling saveProfile with data:', data);
         // Save to both database and user metadata for now
         await saveProfile(data);
-        console.log('saveProfile completed successfully');
         
         // Also keep in user metadata as backup
         const { data: { user } } = await supabase.auth.getUser();
@@ -85,38 +79,26 @@ export const MultiStepForm: React.FC<MultiStepFormProps> = ({
           await supabase.auth.updateUser({
             data: { preferences: data }
           });
-          console.log('User metadata updated successfully');
         }
       } catch (error) {
         console.error('Error saving progress:', error);
       }
-    } else {
-      console.log('Skipping save because isNewUser=true');
     }
   };
 
   const updateStepData = (stepData: Partial<UserPreferences>) => {
-    console.log('=== UPDATE STEP DATA ===');
-    console.log('Current step:', currentStep);
-    console.log('Step data received:', stepData);
-    
     const newFormData = { ...formData, ...stepData };
-    console.log('New form data:', newFormData);
     setFormData(newFormData);
     
     // Mark current step as completed
     if (!newFormData.completedSteps.includes(currentStep)) {
       newFormData.completedSteps = [...newFormData.completedSteps, currentStep];
       setFormData(newFormData);
-      console.log('Marked step as completed:', currentStep);
     }
 
     // Auto-save for existing users
     if (!isNewUser) {
-      console.log('Triggering auto-save...');
       saveProgress(newFormData);
-    } else {
-      console.log('Skipping auto-save (new user)');
     }
   };
 
