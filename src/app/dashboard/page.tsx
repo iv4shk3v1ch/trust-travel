@@ -3,30 +3,28 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { loadExistingProfile, DatabaseProfile } from '@/lib/newDatabase';
+import { calculateProfileCompleteness } from '@/services/profileScore';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<DatabaseProfile | null>(null);
-  const [profileChecked, setProfileChecked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkUser = async () => {
       try {
-        // Get current user
-        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabase.auth.getUser();
         
-        if (authError || !currentUser) {
+        if (error || !user) {
           router.push('/login');
           return;
         }
 
-        setUser(currentUser);
+        setUser(user);
         
         // Check if user has a profile
         try {
@@ -36,8 +34,6 @@ export default function DashboardPage() {
           // Profile doesn't exist
           setProfile(null);
         }
-        
-        setProfileChecked(true);
         
       } catch (error) {
         console.error('Error checking user status:', error);
@@ -61,36 +57,13 @@ export default function DashboardPage() {
     );
   }
 
-  // Show profile completion banner if needed
-  const isProfileIncomplete = profileChecked && !profile;
+  // Calculate profile completion stats
+  const profileStats = profile ? calculateProfileCompleteness(profile) : { percentage: 0, isComplete: false, missingFields: [] };
 
   // REGULAR DASHBOARD
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Profile Completion Banner */}
-        {isProfileIncomplete && (
-          <div className="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Complete Your Profile 🌟</h3>
-                <p className="text-indigo-100">
-                  Set up your travel preferences to get personalized recommendations and connect with fellow travelers.
-                </p>
-              </div>
-              <Link href="/profile">
-                <Button 
-                  variant="outline" 
-                  className="bg-white !text-indigo-600 hover:bg-gray-100 border-white font-medium"
-                >
-                  Complete Profile
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
-        
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -101,106 +74,136 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Main Actions - 3 Columns with 2 Cards Each */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           
-          {/* Plan New Trip */}
-          <Link href="/plan-trip">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all duration-200 cursor-pointer">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-2xl">🗺️</span>
-                </div>
-                <h3 className="text-xl font-semibold">Plan New Trip</h3>
-              </div>
-              <p className="text-indigo-100">Create your perfect Trento itinerary</p>
-            </div>
-          </Link>
-
-          {/* Leave a Review */}
-          <Link href="/reviews">
-            <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all duration-200 cursor-pointer">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-2xl">⭐</span>
-                </div>
-                <h3 className="text-xl font-semibold">Leave a Review</h3>
-              </div>
-              <p className="text-pink-100">Share your experience with others</p>
-            </div>
-          </Link>
-
-          {/* Find Companions */}
-          <Link href="/search">
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all duration-200 cursor-pointer">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-2xl">👥</span>
-                </div>
-                <h3 className="text-xl font-semibold">Find Companions</h3>
-              </div>
-              <p className="text-emerald-100">Connect with travelers in Trento</p>
-            </div>
-          </Link>
-
-          {/* My Profile */}
-          <Link href="/profile">
-            <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white hover:shadow-xl transition-all duration-200 cursor-pointer">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <h3 className="text-xl font-semibold">My Profile</h3>
-              </div>
-              <p className="text-orange-100">Manage your travel preferences</p>
-            </div>
-          </Link>
-
-        </div>
-
-        {/* Secondary Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Travel Network</h3>
-            <div className="space-y-3">
-              <Link href="/connections">
-                <Button variant="outline" className="w-full justify-start">
-                  <span className="mr-2">🤝</span>
-                  My Connections
-                </Button>
-              </Link>
-              <Link href="/search">
-                <Button variant="outline" className="w-full justify-start">
-                  <span className="mr-2">🔍</span>
-                  Find Travelers
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Trip Management</h3>
-            <div className="space-y-3">
+          {/* Column 1: Trip Planning */}
+          <div className="space-y-6">
+            {/* Plan New Trip */}
+            <div className="mb-6">
               <Link href="/plan-trip">
-                <Button variant="outline" className="w-full justify-start">
-                  <span className="mr-2">➕</span>
-                  Plan New Trip
-                </Button>
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                      <span className="text-xl">🗺️</span>
+                    </div>
+                    <h3 className="text-lg font-bold">Plan New Trip</h3>
+                    <p className="text-indigo-100 text-sm">Create your perfect Trento itinerary</p>
+                  </div>
+                </div>
               </Link>
+            </div>
+
+            {/* Leave a Review */}
+            <div>
               <Link href="/reviews">
-                <Button variant="outline" className="w-full justify-start">
-                  <span className="mr-2">⭐</span>
-                  Leave a Review
-                </Button>
+                <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                      <span className="text-xl">⭐</span>
+                    </div>
+                    <h3 className="text-lg font-bold">Leave a Review</h3>
+                    <p className="text-pink-100 text-sm">Share your experience with others</p>
+                  </div>
+                </div>
               </Link>
-              <Button variant="outline" className="w-full justify-start" disabled>
-                <span className="mr-2">📋</span>
-                My Trips (Soon)
-              </Button>
             </div>
           </div>
 
+          {/* Column 2: Social Features */}
+          <div className="space-y-6">
+            {/* My Connections */}
+            <div className="mb-6">
+              <Link href="/connections">
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                      <span className="text-xl">🤝</span>
+                    </div>
+                    <h3 className="text-lg font-bold">My Connections</h3>
+                    <p className="text-emerald-100 text-sm">Connect with fellow travelers</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Find Travellers */}
+            <div>
+              <Link href="/search">
+                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                      <span className="text-xl">🔍</span>
+                    </div>
+                    <h3 className="text-lg font-bold">Find Travellers</h3>
+                    <p className="text-amber-100 text-sm">Discover like-minded adventurers</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Column 3: Profile Management */}
+          <div className="space-y-6">
+            {/* Profile Completeness */}
+            <div className="mb-6">
+              <Link href="/profile">
+                <div className="bg-gradient-to-br from-slate-600 to-gray-700 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="relative w-12 h-12 mx-auto">
+                      <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          className="text-white/20"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path
+                          className="text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeDasharray={`${profileStats.percentage}, 100`}
+                          strokeLinecap="round"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          style={{
+                            strokeDashoffset: 0,
+                            transition: 'stroke-dasharray 1s ease-in-out'
+                          }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">{profileStats.percentage}%</span>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold">Profile Completeness</h3>
+                    <p className="text-slate-200 text-sm">
+                      {profileStats.isComplete 
+                        ? 'Profile complete!'
+                        : `${profileStats.missingFields.length} sections remaining`
+                      }
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* My Profile */}
+            <div>
+              <Link href="/profile">
+                <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
+                  <div className="text-center space-y-2 w-full">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                      <span className="text-xl">👤</span>
+                    </div>
+                    <h3 className="text-lg font-bold">My Profile</h3>
+                    <p className="text-violet-100 text-sm">View and manage your profile</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Debug info */}

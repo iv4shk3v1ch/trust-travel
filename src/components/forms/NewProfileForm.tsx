@@ -54,12 +54,12 @@ const BasicInfoStep: React.FC<{
     <div className="max-w-2xl mx-auto p-6 space-y-8">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {isEditing ? "Update your info 📝" : "Let's get to know you! 👋"}
+          {isEditing ? "Fill the form with your info 📝" : "Let's get to know you! 👋"}
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
           {isEditing 
-            ? "Edit any fields you'd like to update - your current info is shown below"
-            : "Tell us a bit about yourself to personalize your travel experience"
+            ? "Update fields below"
+            : "Tell us about yourself to personalize your travel experience"
           }
         </p>
       </div>
@@ -163,7 +163,7 @@ const BudgetStep: React.FC<{
     {
       value: 'low',
       label: 'Budget Explorer',
-      icon: '�',
+      icon: '💸',
       description: 'Smart spending, great value',
       range: 'Under €50/day'
     },
@@ -187,7 +187,7 @@ const BudgetStep: React.FC<{
     {
       value: 'planned',
       label: 'Well-Planned',
-      icon: '�',
+      icon: '📋',
       description: 'Every detail organized in advance'
     },
     {
@@ -199,7 +199,7 @@ const BudgetStep: React.FC<{
     {
       value: 'spontaneous',
       label: 'Spontaneous',
-      icon: '�',
+      icon: '🎲',
       description: 'Go with the flow and see what happens'
     }
   ];
@@ -810,13 +810,8 @@ const NewProfileForm: React.FC<NewProfileFormProps> = ({ onComplete, initialData
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                {isEditMode ? "Edit Your Profile" : "Complete Your Profile"}
+                {isEditMode ? "Edit Profile" : "Complete Your Profile"}
               </h1>
-              {isEditMode && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                  Edit Mode
-                </span>
-              )}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Step {currentStep + 1} of {steps.length}
