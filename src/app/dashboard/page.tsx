@@ -6,10 +6,13 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
+import { loadExistingProfile, DatabaseProfile } from '@/lib/newDatabase';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<DatabaseProfile | null>(null);
+  const [profileChecked, setProfileChecked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +27,17 @@ export default function DashboardPage() {
         }
 
         setUser(currentUser);
+        
+        // Check if user has a profile
+        try {
+          const existingProfile = await loadExistingProfile();
+          setProfile(existingProfile);
+        } catch {
+          // Profile doesn't exist
+          setProfile(null);
+        }
+        
+        setProfileChecked(true);
         
       } catch (error) {
         console.error('Error checking user status:', error);
@@ -47,15 +61,40 @@ export default function DashboardPage() {
     );
   }
 
-  // REGULAR DASHBOARD - NO MORE ONBOARDING WIZARD
+  // Show profile completion banner if needed
+  const isProfileIncomplete = profileChecked && !profile;
+
+  // REGULAR DASHBOARD
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* Profile Completion Banner */}
+        {isProfileIncomplete && (
+          <div className="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Complete Your Profile 🌟</h3>
+                <p className="text-indigo-100">
+                  Set up your travel preferences to get personalized recommendations and connect with fellow travelers.
+                </p>
+              </div>
+              <Link href="/profile">
+                <Button 
+                  variant="outline" 
+                  className="bg-white !text-indigo-600 hover:bg-gray-100 border-white font-medium"
+                >
+                  Complete Profile
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+        
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome back, {user?.user_metadata?.firstName || 'Traveler'}!
+            Welcome back, {profile?.full_name || user?.user_metadata?.full_name || 'Traveler'}!
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Ready for your next Trento adventure?

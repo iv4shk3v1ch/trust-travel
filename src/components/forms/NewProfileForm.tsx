@@ -163,43 +163,43 @@ const BudgetStep: React.FC<{
     {
       value: 'low',
       label: 'Budget Explorer',
-      icon: '💡',
+      icon: '�',
       description: 'Smart spending, great value',
-      range: '$50-100/day'
+      range: 'Under €50/day'
     },
     {
       value: 'medium',
       label: 'Comfort Seeker',
-      icon: '⭐',
+      icon: '💳',
       description: 'Balance of comfort and value',
-      range: '$100-200/day'
+      range: '€50-200/day'
     },
     {
       value: 'high',
       label: 'Luxury Traveler',
       icon: '💎',
       description: 'Premium experiences',
-      range: '$200+/day'
+      range: '€200+/day'
     }
   ];
 
   const tripStyleOptions = [
     {
       value: 'planned',
-      label: 'Master Planner',
-      icon: '📋',
+      label: 'Well-Planned',
+      icon: '�',
       description: 'Every detail organized in advance'
     },
     {
       value: 'mixed',
-      label: 'Balanced Explorer',
+      label: 'Flexible',
       icon: '🎯',
       description: 'Some planning, some spontaneity'
     },
     {
       value: 'spontaneous',
-      label: 'Free Spirit',
-      icon: '🌈',
+      label: 'Spontaneous',
+      icon: '�',
       description: 'Go with the flow and see what happens'
     }
   ];

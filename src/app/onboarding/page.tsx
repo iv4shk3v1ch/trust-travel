@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MultiStepForm } from '@/components/forms/MultiStepForm';
-import { UserPreferences } from '@/types/preferences';
+import { OnboardingWizard } from '@/components/wizard/OnboardingWizard';
 import { supabase } from '@/lib/supabase';
-import { saveProfile } from '@/lib/database';
+import { loadExistingProfile } from '@/lib/newDatabase';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,10 +18,17 @@ export default function OnboardingPage() {
         return;
       }
       
-      // Check if user already has preferences set up
-      if (session.user.user_metadata?.preferences?.isComplete) {
-        router.push('/dashboard');
-        return;
+      // Check if user already has a profile in the database
+      try {
+        const existingProfile = await loadExistingProfile();
+        if (existingProfile) {
+          // User already has a profile, redirect to dashboard
+          router.push('/dashboard');
+          return;
+        }
+      } catch {
+        // If error loading profile, assume it doesn't exist yet
+        console.log('No existing profile found, showing onboarding');
       }
       
       setLoading(false);
@@ -31,44 +37,21 @@ export default function OnboardingPage() {
     checkAuth();
   }, [router]);
 
-  const handleComplete = async (preferences: UserPreferences) => {
-    try {
-      console.log('Starting onboarding completion with preferences:', preferences);
-      
-      // Save to database first
-      await saveProfile(preferences);
-      console.log('Database save completed successfully');
-      
-      // Update user metadata with completed preferences
-      await supabase.auth.updateUser({
-        data: { 
-          preferences,
-          onboarding_completed: true 
-        }
-      });
-      console.log('User metadata updated successfully');
-      
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      alert('Failed to save profile. Please try again.');
-    }
+  const handleComplete = () => {
+    // After completing onboarding, redirect to dashboard
+    router.push('/dashboard');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Setting up your profile...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <MultiStepForm
-        onComplete={handleComplete}
-        isNewUser={true}
-      />
-    </div>
-  );
+  return <OnboardingWizard onComplete={handleComplete} />;
 }
