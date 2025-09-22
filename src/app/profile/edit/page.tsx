@@ -54,6 +54,18 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Back Navigation */}
+        <div className="mb-6">
+          <button 
+            onClick={() => router.push('/profile')}
+            className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
+          >
+            <span className="mr-2">←</span>
+            Back to Profile
+          </button>
+        </div>
+        
         {/* Edit Form */}
         <NewProfileForm 
           initialData={currentProfile}
