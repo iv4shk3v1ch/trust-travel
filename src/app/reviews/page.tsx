@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { EnhancedReviewForm } from '@/components/reviews/EnhancedReviewForm';
+import { saveReview } from '@/lib/reviewsDatabase';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 interface ReviewFormData {
@@ -19,6 +21,7 @@ interface ReviewFormData {
 
 export default function ReviewsPage() {
   const { loading } = useAuthGuard();
+  const [submitting, setSubmitting] = useState(false);
 
   if (loading) {
     return (
@@ -31,10 +34,46 @@ export default function ReviewsPage() {
     );
   }
 
-  const handleReviewSubmit = (review: ReviewFormData) => {
-    console.log('Review submitted:', review);
-    // TODO: Implement review submission to database
-    alert('Review submitted successfully! 🎉');
+  const handleReviewSubmit = async (review: ReviewFormData) => {
+    setSubmitting(true);
+    
+    try {
+      console.log('Starting review submission process...');
+      console.log('Review data received:', review);
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Authentication error:', userError);
+        alert('Please log in to submit a review');
+        return;
+      }
+
+      console.log('User authenticated:', user.id);
+
+      // Save to database (the saveReview function now accepts the enhanced form data directly)
+      console.log('Calling saveReview function...');
+      const result = await saveReview(review, user.id);
+      console.log('saveReview result:', result);
+
+      if (result.success) {
+        console.log('Review saved successfully!');
+        alert('Review submitted successfully! 🎉');
+        // Optionally redirect to dashboard or reviews list
+        window.location.href = '/dashboard';
+      } else {
+        console.error('Review save failed:', result.error);
+        alert(`Failed to submit review: ${result.error}`);
+      }
+
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      console.log('Setting submitting to false');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -55,10 +94,17 @@ export default function ReviewsPage() {
         </div>
 
         {/* Enhanced Review Form */}
-        <EnhancedReviewForm
-          onSubmit={handleReviewSubmit}
-          onCancel={() => window.history.back()}
-        />
+        {submitting ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Submitting your review...</p>
+          </div>
+        ) : (
+          <EnhancedReviewForm
+            onSubmit={handleReviewSubmit}
+            onCancel={() => window.history.back()}
+          />
+        )}
 
         {/* Info Section */}
         <div className="mt-8 bg-pink-50 dark:bg-pink-900/20 rounded-2xl p-6">
