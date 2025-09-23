@@ -2,9 +2,20 @@
 
 import React from 'react';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { QuickReview } from '@/components/reviews/QuickReview';
+import { EnhancedReviewForm } from '@/components/reviews/EnhancedReviewForm';
 import Link from 'next/link';
-import { QuickReviewFormData } from '@/types/review';
+
+interface ReviewFormData {
+  placeId: string;
+  placeName: string;
+  placeCategory: string;
+  ratings: Record<string, number>;
+  experienceTags: string[];
+  foodPriceRange?: string;
+  comment: string;
+  photoFile?: File;
+  visitDate: string;
+}
 
 export default function ReviewsPage() {
   const { loading } = useAuthGuard();
@@ -20,7 +31,7 @@ export default function ReviewsPage() {
     );
   }
 
-  const handleReviewSubmit = (review: QuickReviewFormData) => {
+  const handleReviewSubmit = (review: ReviewFormData) => {
     console.log('Review submitted:', review);
     // TODO: Implement review submission to database
     alert('Review submitted successfully! 🎉');
@@ -43,8 +54,8 @@ export default function ReviewsPage() {
           </p>
         </div>
 
-        {/* Quick Review Form */}
-        <QuickReview
+        {/* Enhanced Review Form */}
+        <EnhancedReviewForm
           onSubmit={handleReviewSubmit}
           onCancel={() => window.history.back()}
         />
