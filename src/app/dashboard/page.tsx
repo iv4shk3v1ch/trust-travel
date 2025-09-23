@@ -127,16 +127,16 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Find Travellers */}
+            {/* Add Place */}
             <div>
-              <Link href="/search">
+              <Link href="/add-place">
                 <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-4 text-white hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[140px] flex items-center">
                   <div className="text-center space-y-2 w-full">
                     <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto">
-                      <span className="text-xl">🔍</span>
+                      <span className="text-xl">�</span>
                     </div>
-                    <h3 className="text-lg font-bold">Find Travellers</h3>
-                    <p className="text-amber-100 text-sm">Discover like-minded adventurers</p>
+                    <h3 className="text-lg font-bold">Add Place</h3>
+                    <p className="text-amber-100 text-sm">Share amazing places with community</p>
                   </div>
                 </div>
               </Link>

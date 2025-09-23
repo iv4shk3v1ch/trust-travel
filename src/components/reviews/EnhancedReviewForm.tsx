@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { 
@@ -16,18 +16,7 @@ import {
   type FoodPriceRange,
   type ReviewCategory
 } from '@/lib/dataStandards';
-
-// Mock places data - in real app this would come from API/database
-const MOCK_PLACES = [
-  { id: '1', name: 'Pizzeria Corallo', category: PLACE_CATEGORIES.RESTAURANT },
-  { id: '2', name: 'Blue Note Jazz Club', category: PLACE_CATEGORIES.MUSIC_VENUE },
-  { id: '3', name: 'Central Park', category: PLACE_CATEGORIES.PARK },
-  { id: '4', name: 'Starbucks Coffee', category: PLACE_CATEGORIES.COFFEE_SHOP },
-  { id: '5', name: 'Metropolitan Museum', category: PLACE_CATEGORIES.MUSEUM },
-  { id: '6', name: 'The Ritz Hotel', category: PLACE_CATEGORIES.HOTEL },
-  { id: '7', name: 'Beach Bar Sunset', category: PLACE_CATEGORIES.BAR },
-  { id: '8', name: 'St. Peter\'s Basilica', category: PLACE_CATEGORIES.RELIGIOUS_SITE },
-];
+import { searchPlaces, type DatabasePlace } from '@/lib/placesDatabase';
 
 interface PlaceSearchProps {
   onPlaceSelect: (place: { id: string; name: string; category: PlaceCategory }) => void;
@@ -37,13 +26,49 @@ interface PlaceSearchProps {
 const PlaceSearch: React.FC<PlaceSearchProps> = ({ onPlaceSelect, selectedPlace }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<DatabasePlace[]>([]);
 
-  const filteredPlaces = MOCK_PLACES.filter(place =>
-    place.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const MOCK_PLACES = [
+      { id: '1', name: 'Pizzeria Corallo', category: PLACE_CATEGORIES.RESTAURANT },
+      { id: '2', name: 'Blue Note Jazz Club', category: PLACE_CATEGORIES.MUSIC_VENUE },
+      { id: '3', name: 'Central Park', category: PLACE_CATEGORIES.PARK },
+      { id: '4', name: 'Starbucks Coffee', category: PLACE_CATEGORIES.COFFEE_SHOP },
+      { id: '5', name: 'Metropolitan Museum', category: PLACE_CATEGORIES.MUSEUM },
+      { id: '6', name: 'The Ritz Hotel', category: PLACE_CATEGORIES.HOTEL },
+      { id: '7', name: 'Beach Bar Sunset', category: PLACE_CATEGORIES.BAR },
+      { id: '8', name: 'St. Peter\'s Basilica', category: PLACE_CATEGORIES.RELIGIOUS_SITE },
+    ];
 
-  const handlePlaceSelect = (place: typeof MOCK_PLACES[0]) => {
-    onPlaceSelect(place);
+    const performSearch = async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
+
+      try {
+        const results = await searchPlaces(searchQuery);
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Error searching places:', error);
+        // Fallback to mock places on error
+        const mockResults = MOCK_PLACES.filter(place =>
+          place.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setSearchResults(mockResults as DatabasePlace[]);
+      }
+    };
+
+    const timeoutId = setTimeout(performSearch, 300); // Debounce search
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const handlePlaceSelect = (place: DatabasePlace) => {
+    onPlaceSelect({
+      id: place.id,
+      name: place.name,
+      category: place.category
+    });
     setSearchQuery(place.name);
     setShowResults(false);
   };
@@ -66,9 +91,9 @@ const PlaceSearch: React.FC<PlaceSearchProps> = ({ onPlaceSelect, selectedPlace 
         className="w-full"
       />
       
-      {showResults && filteredPlaces.length > 0 && (
+      {showResults && searchResults.length > 0 && (
         <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
-          {filteredPlaces.map((place) => (
+          {searchResults.map((place) => (
             <button
               key={place.id}
               onClick={() => handlePlaceSelect(place)}
