@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TravelPlan, DESTINATION_AREAS, TRAVEL_TYPES, TRAVEL_GOALS, SPECIAL_NEEDS } from '@/types/travel-plan';
+import { TravelPlan, DESTINATION_AREAS, TRAVEL_TYPES, TRAVEL_EXPERIENCE_TAGS, SPECIAL_NEEDS } from '@/types/travel-plan';
 
 interface ConfirmationStepProps {
   travelPlan: TravelPlan;
@@ -22,8 +22,9 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
     return TRAVEL_TYPES.find(t => t.id === typeId)?.label || typeId;
   };
 
-  const getGoalLabels = (goalIds: string[]) => {
-    return goalIds.map(id => TRAVEL_GOALS.find(g => g.id === id)?.label || id);
+  const getExperienceTagLabels = (tagIds: string[] | undefined) => {
+    if (!tagIds) return [];
+    return tagIds.map(id => TRAVEL_EXPERIENCE_TAGS.find(t => t.id === id)?.label || id);
   };
 
   const getNeedLabels = (needIds: string[]) => {
@@ -31,8 +32,7 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
   };
 
   const getDateString = () => {
-    if (travelPlan.dates.type === 'this-weekend') return 'This Weekend';
-    if (travelPlan.dates.type === 'next-week') return 'Next Week';
+    if (travelPlan.dates.type === 'now') return 'Right Now';
     if (travelPlan.dates.startDate && travelPlan.dates.endDate) {
       return `${new Date(travelPlan.dates.startDate).toLocaleDateString()} - ${new Date(travelPlan.dates.endDate).toLocaleDateString()}`;
     }
@@ -40,7 +40,7 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
   };
 
   const travelTypeLabel = getTravelTypeLabel(travelPlan.travelType);
-  const goalLabels = getGoalLabels(travelPlan.goals);
+  const experienceTagLabels = getExperienceTagLabels(travelPlan.experienceTags);
 
   return (
     <div className="space-y-6">
@@ -80,7 +80,7 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
 
           <div>
             <span className="text-lg font-medium text-green-600 dark:text-green-400">
-              🎯 In a mood for: {goalLabels.join(', ')}
+              🎯 Looking for: {experienceTagLabels.join(', ')}
             </span>
           </div>
 

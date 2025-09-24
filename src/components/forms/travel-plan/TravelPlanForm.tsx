@@ -25,13 +25,13 @@ export const TravelPlanForm: React.FC<TravelPlanFormProps> = ({
       region: 'trento'
     },
     dates: {
-      type: initialData?.dates?.type || 'this-weekend',
+      type: initialData?.dates?.type || 'now',
       startDate: initialData?.dates?.startDate,
       endDate: initialData?.dates?.endDate,
       isFlexible: initialData?.dates?.isFlexible || false
     },
     travelType: (initialData?.travelType as 'solo' | 'date' | 'family' | 'friends' | 'business') || 'solo',
-    goals: initialData?.goals || [],
+    experienceTags: initialData?.experienceTags || [],
     specialNeeds: initialData?.specialNeeds || [],
     completedSteps: initialData?.completedSteps || [],
     isComplete: false
@@ -71,7 +71,7 @@ export const TravelPlanForm: React.FC<TravelPlanFormProps> = ({
     'Destination',
     'Dates',
     'Travel Type',
-    'Goals & Mood',
+    'Experience Tags',
     'Special Needs',
     'Confirmation'
   ];
@@ -159,8 +159,8 @@ export const TravelPlanForm: React.FC<TravelPlanFormProps> = ({
 
         {currentStep === 4 && (
           <GoalsStep
-            selectedGoals={travelPlan.goals}
-            onGoalsChange={(goals) => updateTravelPlan({ goals })}
+            selectedGoals={travelPlan.experienceTags}
+            onGoalsChange={(experienceTags) => updateTravelPlan({ experienceTags })}
             onNext={nextStep}
             onBack={prevStep}
           />

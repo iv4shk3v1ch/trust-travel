@@ -36,11 +36,16 @@ export const DestinationStep: React.FC<DestinationStepProps> = ({
                 : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start space-x-3">
               <span className="text-2xl">{area.icon}</span>
-              <span className="text-lg font-medium text-gray-900 dark:text-white">
-                {area.label}
-              </span>
+              <div>
+                <div className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                  {area.label}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {area.description}
+                </div>
+              </div>
             </div>
           </button>
         ))}

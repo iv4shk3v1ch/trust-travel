@@ -4,13 +4,13 @@ export interface TravelPlan {
     region: string;
   };
   dates: {
-    type: 'this-weekend' | 'next-week' | 'custom';
+    type: 'now' | 'custom';
     startDate?: string;
     endDate?: string;
     isFlexible: boolean;
   };
   travelType: 'solo' | 'date' | 'family' | 'friends' | 'business';
-  goals: string[]; // Can select 1-3
+  experienceTags: string[]; // Experience tags from data standards - can select 1-3
   specialNeeds: string[];
   completedSteps: number[];
   isComplete: boolean;
@@ -18,10 +18,10 @@ export interface TravelPlan {
 
 // Available options
 export const DESTINATION_AREAS = [
-  { id: 'trento-city', label: 'Trento City', icon: '🏙' },
-  { id: 'nearby-mountains', label: 'Nearby Mountains', icon: '🏞' },
-  { id: 'wine-lakes', label: 'Wine & Lakes Area', icon: '🍇' },
-  { id: 'historic-villages', label: 'Historic Villages', icon: '🏰' }
+  { id: 'trento-city', label: 'Trento City', icon: '🏛️', description: 'Downtown, historic center, urban attractions' },
+  { id: 'historic-villages', label: 'Small Historic Villages', icon: '🏘️', description: 'Traditional villages with cultural heritage' },
+  { id: 'nature-easy', label: 'Nature (Easy Walk)', icon: '🌲', description: 'Parks, easy trails, relaxing nature spots' },
+  { id: 'nature-hike', label: 'Nature (Hiking)', icon: '🏔️', description: 'Mountain trails, challenging hikes, adventure' }
 ];
 
 export const TRAVEL_TYPES = [
@@ -32,17 +32,27 @@ export const TRAVEL_TYPES = [
   { id: 'business', label: 'Business', icon: '💼' }
 ];
 
-export const TRAVEL_GOALS = [
-  { id: 'adventure', label: 'Adventure', icon: '🧭' },
-  { id: 'relax', label: 'Relax & Recharge', icon: '🧘' },
-  { id: 'food-wine', label: 'Food & Wine', icon: '🍷' },
-  { id: 'culture', label: 'Culture & History', icon: '🎭' },
-  { id: 'nature', label: 'Nature & Outdoors', icon: '🏞' },
-  { id: 'scenic', label: 'Scenic Spots', icon: '📸' },
-  { id: 'social', label: 'Social Fun', icon: '🎉' },
-  { id: 'shopping', label: 'Shopping', icon: '🛍' },
-  { id: 'sport', label: 'Sport & Activity', icon: '🏋' },
-  { id: 'learning', label: 'Learning / Workshops', icon: '📚' }
+// Experience tags from data standards - these align with our place/review system
+// Removed social context tags (covered by travel type) and timing tags (covered by dates)
+export const TRAVEL_EXPERIENCE_TAGS = [
+  // Value Proposition
+  { id: 'exceptional-food', label: 'Exceptional Food', icon: '🍽️', description: 'Outstanding culinary experience' },
+  { id: 'cultural-immersion', label: 'Cultural Immersion', icon: '🎭', description: 'Authentic local culture' },
+  { id: 'scenic-beauty', label: 'Scenic Beauty', icon: '📸', description: 'Beautiful views/natural beauty' },
+  { id: 'historical-significance', label: 'Historical Significance', icon: '🏛️', description: 'Important historical value' },
+  { id: 'unique-architecture', label: 'Unique Architecture', icon: '🏗️', description: 'Notable building/design' },
+  
+  // Atmosphere & Experience
+  { id: 'relaxing', label: 'Relaxing', icon: '🧘', description: 'Calm, peaceful experience' },
+  { id: 'energetic', label: 'Energetic', icon: '⚡', description: 'High energy, lively atmosphere' },
+  { id: 'intimate', label: 'Intimate', icon: '🤗', description: 'Small, cozy, personal setting' },
+  { id: 'authentic-local', label: 'Authentic Local', icon: '🏘️', description: 'Real local experience, not touristy' },
+  
+  // Practical Considerations
+  { id: 'budget-friendly', label: 'Budget Friendly', icon: '💰', description: 'Good value, affordable' },
+  { id: 'luxury', label: 'Luxury', icon: '💎', description: 'High-end, premium experience' },
+  { id: 'crowd-level-low', label: 'Not Crowded', icon: '🤫', description: 'Usually quiet, peaceful' },
+  { id: 'crowd-level-high', label: 'Lively & Busy', icon: '🎪', description: 'Usually bustling with activity' }
 ];
 
 export const SPECIAL_NEEDS = [

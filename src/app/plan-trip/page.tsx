@@ -3,13 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TravelPlanForm } from '@/components/forms/travel-plan/TravelPlanForm';
+import { RecommendationsDisplay } from '@/components/recommendations/RecommendationsDisplay';
 import { TravelPlan } from '@/types/travel-plan';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
+import { getRecommendations, getImmediateRecommendations, type RecommendedPlace } from '@/lib/recommender';
 
 export default function PlanTripPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [recommendations, setRecommendations] = useState<RecommendedPlace[]>([]);
+  const [completedTravelPlan, setCompletedTravelPlan] = useState<TravelPlan | null>(null);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -27,9 +33,14 @@ export default function PlanTripPage() {
   const handlePlanComplete = async (travelPlan: TravelPlan) => {
     try {
       console.log('Travel plan completed:', travelPlan);
+      setLoadingRecommendations(true);
+      setCompletedTravelPlan(travelPlan);
       
-      // For now, just store in user metadata
-      // Later we can create a separate travel_plans table
+      // Get current user for social bias
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id;
+      
+      // Save travel plan to user metadata
       await supabase.auth.updateUser({
         data: { 
           currentTravelPlan: travelPlan,
@@ -37,12 +48,26 @@ export default function PlanTripPage() {
         }
       });
       
-      // Redirect to a success page or dashboard with trip recommendations
-      router.push('/dashboard?tripPlanned=true');
+      // Get recommendations based on travel plan (with social bias if user authenticated)
+      const recs = travelPlan.dates.type === 'now' 
+        ? await getImmediateRecommendations(travelPlan, currentUserId)
+        : await getRecommendations(travelPlan, currentUserId);
+      
+      setRecommendations(recs);
+      setShowRecommendations(true);
+      setLoadingRecommendations(false);
+      
     } catch (error) {
-      console.error('Error saving travel plan:', error);
-      alert('Failed to save your travel plan. Please try again.');
+      console.error('Error saving travel plan or getting recommendations:', error);
+      setLoadingRecommendations(false);
+      alert('Failed to get recommendations. Please try again.');
     }
+  };
+
+  const handleBackToForm = () => {
+    setShowRecommendations(false);
+    setRecommendations([]);
+    setCompletedTravelPlan(null);
   };
 
   if (loading) {
@@ -53,6 +78,37 @@ export default function PlanTripPage() {
     );
   }
 
+  // Show loading screen while getting recommendations
+  if (loadingRecommendations) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Finding perfect places for you...
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Analyzing your preferences and matching with local spots
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show recommendations if we have them
+  if (showRecommendations && completedTravelPlan) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <RecommendationsDisplay 
+          recommendations={recommendations}
+          travelPlan={completedTravelPlan}
+          onBackToForm={handleBackToForm}
+        />
+      </div>
+    );
+  }
+
+  // Default: show the travel plan form
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-6xl mx-auto p-6">

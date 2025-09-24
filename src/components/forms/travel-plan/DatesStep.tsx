@@ -3,11 +3,11 @@
 import React from 'react';
 
 interface DatesStepProps {
-  dateType: 'this-weekend' | 'next-week' | 'custom';
+  dateType: 'now' | 'custom';
   startDate?: string;
   endDate?: string;
   isFlexible: boolean;
-  onDateTypeChange: (type: 'this-weekend' | 'next-week' | 'custom') => void;
+  onDateTypeChange: (type: 'now' | 'custom') => void;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onFlexibleChange: (flexible: boolean) => void;
@@ -47,34 +47,19 @@ export const DatesStep: React.FC<DatesStepProps> = ({
 
       {/* Quick Pick Options */}
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
-            onClick={() => onDateTypeChange('this-weekend')}
+            onClick={() => onDateTypeChange('now')}
             className={`p-4 rounded-lg border-2 transition-all ${
-              dateType === 'this-weekend'
+              dateType === 'now'
                 ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                 : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
             }`}
           >
             <div className="text-center">
-              <div className="text-2xl mb-2">🗓️</div>
-              <div className="font-medium text-gray-900 dark:text-white">This Weekend</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Quick getaway</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => onDateTypeChange('next-week')}
-            className={`p-4 rounded-lg border-2 transition-all ${
-              dateType === 'next-week'
-                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="text-center">
-              <div className="text-2xl mb-2">📅</div>
-              <div className="font-medium text-gray-900 dark:text-white">Next Week</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Plan ahead</div>
+              <div className="text-2xl mb-2">⚡</div>
+              <div className="font-medium text-gray-900 dark:text-white">Right Now</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Looking for something to do today</div>
             </div>
           </button>
 

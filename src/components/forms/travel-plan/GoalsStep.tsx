@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TRAVEL_GOALS } from '@/types/travel-plan';
+import { TRAVEL_EXPERIENCE_TAGS } from '@/types/travel-plan';
 
 interface GoalsStepProps {
   selectedGoals: string[];
@@ -28,27 +28,27 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          What&apos;s the vibe you&apos;re going for this trip?
+          What kind of experience are you looking for?
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Pick 1-3 moods that capture what you want from this experience
+          Pick 1-3 experience tags that match what you want to find
         </p>
         <div className="mt-2 text-sm text-indigo-600 dark:text-indigo-400">
           {selectedGoals.length}/3 selected
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {TRAVEL_GOALS.map((goal) => {
-          const isSelected = selectedGoals.includes(goal.id);
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {TRAVEL_EXPERIENCE_TAGS.map((tag) => {
+          const isSelected = selectedGoals.includes(tag.id);
           const isDisabled = !isSelected && selectedGoals.length >= 3;
           
           return (
             <button
-              key={goal.id}
-              onClick={() => toggleGoal(goal.id)}
+              key={tag.id}
+              onClick={() => toggleGoal(tag.id)}
               disabled={isDisabled}
-              className={`p-4 rounded-lg border-2 transition-all text-center ${
+              className={`p-4 rounded-lg border-2 transition-all text-left ${
                 isSelected
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                   : isDisabled
@@ -56,9 +56,16 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              <div className="text-2xl mb-2">{goal.icon}</div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                {goal.label}
+              <div className="flex items-start space-x-3">
+                <span className="text-xl">{tag.icon}</span>
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    {tag.label}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {tag.description}
+                  </div>
+                </div>
               </div>
             </button>
           );
