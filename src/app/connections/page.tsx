@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { getMyConnections, getUsersWhoTrustMe, disconnectFromUser } from '@/lib/connections';
-import type { UserConnection, UserWhoTrustsMe } from '@/lib/connections';
-import { Button } from '@/components/ui/Button';
-import { TrustGraph } from '@/components/social/TrustGraph';
-import type { TrustNode, TrustLink } from '@/components/social/TrustGraph';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { getMyConnections, getUsersWhoTrustMe, disconnectFromUser } from '@/features/social/connections';
+import type { UserConnection, UserWhoTrustsMe } from '@/features/social/connections';
+import { Button } from '@/shared/components/Button';
+import { TrustGraph } from '@/features/social/components/TrustGraph';
+import type { TrustNode, TrustLink } from '@/features/social/components/TrustGraph';
 
 export default function ConnectionsPage() {
   const router = useRouter();

@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/lib/connections';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { supabase } from '@/core/database/supabase';
+import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/features/social/connections';
+import { Button } from '@/shared/components/Button';
+import { Input } from '@/shared/components/Input';
 
 interface UserProfile {
   id: string;

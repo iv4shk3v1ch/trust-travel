@@ -1,6 +1,6 @@
 import React from 'react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/shared/components/Header';
+import { Footer } from '@/shared/components/Footer';
 
 export default function DashboardLayout({
   children,

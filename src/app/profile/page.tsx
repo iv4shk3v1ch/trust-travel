@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadExistingProfile, DatabaseProfile, saveNewProfile } from '@/lib/newDatabase';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { calculateProfileCompleteness } from '@/services/profileScore';
+import { loadExistingProfile, DatabaseProfile, saveNewProfile } from '@/core/database/newDatabase';
+import { supabase } from '@/core/database/supabase';
+import { Button } from '@/shared/components/Button';
+import { calculateProfileCompleteness } from '@/core/services/profileScore';
 
 export default function ProfilePage() {
   const router = useRouter();

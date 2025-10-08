@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { supabase } from '@/lib/supabase';
+import { Button } from '@/shared/components/Button';
+import { Input } from '@/shared/components/Input';
+import { GoogleOAuthButton } from '@/features/auth/components/OAuthButtons';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -16,6 +17,28 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const { signUp, user } = useAuth();
+
+  // Handle redirect in useEffect to avoid setState during render
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  // Don't render signup form if user is already authenticated
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-indigo-900 flex items-center justify-center px-4 py-8">
+        <div className="max-w-md w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,30 +60,15 @@ export default function SignupPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          },
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      if (data.user) {
-        setSuccess(true);
-        // Redirect new users to onboarding
-        setTimeout(() => {
-          router.push('/onboarding');
-        }, 2000);
-      }
-    } catch (err) {
-      setError('An unexpected error occurred');
+      await signUp(email, password, name);
+      setSuccess(true);
+      
+      // Redirect new users to onboarding after a brief delay
+      setTimeout(() => {
+        router.push('/onboarding');
+      }, 2000);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       console.error(err);
     } finally {
       setLoading(false);
@@ -96,6 +104,22 @@ export default function SignupPage() {
             <p className="text-gray-600 dark:text-gray-400">
               Create your account to start your trusted travel journey
             </p>
+          </div>
+          
+          {/* OAuth Button */}
+          <div className="space-y-3">
+            <GoogleOAuthButton />
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
           </div>
           
           <form onSubmit={handleSignup} className="space-y-4">

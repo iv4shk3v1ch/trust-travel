@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveNewPlace, type AddPlaceFormData } from '@/lib/placesDatabase';
+import { saveNewPlace, type AddPlaceFormData } from '@/core/database/placesDatabase';
 
 export async function POST(request: NextRequest) {
   try {

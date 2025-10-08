@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { EnhancedReviewForm } from '@/components/reviews/EnhancedReviewForm';
-import { saveReview } from '@/lib/reviewsDatabase';
-import { supabase } from '@/lib/supabase';
+import { useAuthGuard } from '@/features/auth/hooks/useAuthGuard';
+import { EnhancedReviewForm } from '@/features/reviews/components/EnhancedReviewForm';
+import { saveReview } from '@/core/database/reviewsDatabase';
+import { supabase } from '@/core/database/supabase';
 import Link from 'next/link';
 
 interface ReviewFormData {

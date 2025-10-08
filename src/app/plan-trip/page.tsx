@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TravelPlanForm } from '@/components/forms/travel-plan/TravelPlanForm';
-import { RecommendationsDisplay } from '@/components/recommendations/RecommendationsDisplay';
-import { TravelPlan } from '@/types/travel-plan';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { getRecommendations, getImmediateRecommendations, type RecommendedPlace } from '@/lib/recommender';
+import { TravelPlanForm } from '@/features/travel-plan/components/TravelPlanForm';
+import { RecommendationsDisplay } from '@/shared/components/RecommendationsDisplay';
+import { TravelPlan } from '@/shared/types/travel-plan';
+import { supabase } from '@/core/database/supabase';
+import { Button } from '@/shared/components/Button';
+import { getRecommendations, getImmediateRecommendations, type RecommendedPlace } from '@/core/services/recommender';
 
 export default function PlanTripPage() {
   const router = useRouter();

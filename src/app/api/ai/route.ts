@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { createChatCompletion } from '@/lib/openai';
+import { supabase } from '@/core/database/supabase';
+import { createChatCompletion } from '@/core/services/openai';
 
 export async function POST(request: NextRequest) {
   try {

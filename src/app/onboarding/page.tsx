@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { OnboardingWizard } from '@/components/wizard/OnboardingWizard';
-import { supabase } from '@/lib/supabase';
-import { loadExistingProfile } from '@/lib/newDatabase';
+import { OnboardingWizard } from '@/shared/components/OnboardingWizard';
+import { supabase } from '@/core/database/supabase';
+import { loadExistingProfile } from '@/core/database/newDatabase';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -37,11 +37,6 @@ export default function OnboardingPage() {
     checkAuth();
   }, [router]);
 
-  const handleComplete = () => {
-    // After completing onboarding, redirect to dashboard
-    router.push('/dashboard');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -53,5 +48,5 @@ export default function OnboardingPage() {
     );
   }
 
-  return <OnboardingWizard onComplete={handleComplete} />;
+  return <OnboardingWizard />;
 }

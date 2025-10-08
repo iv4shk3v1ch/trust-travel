@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AddPlaceForm from '@/components/forms/AddPlaceForm';
-import { Button } from '@/components/ui/Button';
+import AddPlaceForm from '@/features/places/components/AddPlaceForm';
+import { Button } from '@/shared/components/Button';
 
 export default function AddPlacePage() {
   const router = useRouter();

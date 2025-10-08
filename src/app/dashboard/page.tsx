@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/database/supabase';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { loadExistingProfile, DatabaseProfile } from '@/lib/newDatabase';
-import { calculateProfileCompleteness } from '@/services/profileScore';
+import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
+import { calculateProfileCompleteness } from '@/core/services/profileScore';
 
 export default function DashboardPage() {
   const router = useRouter();

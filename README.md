@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TrustTravel
 
-## Getting Started
+A modern travel planning application with social trust features and AI recommendations.
 
-First, run the development server:
+## 🚀 Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+trust-travel/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   ├── features/              # Feature-based components
+│   ├── shared/                # Shared components & utilities
+│   └── core/                  # Core services & database
+├── docs/                      # Documentation
+├── database/                  # Database scripts & migrations
+└── supabase/                  # Supabase configuration
+```
 
-## Learn More
+## 🛠️ Features
 
-To learn more about Next.js, take a look at the following resources:
+- **Authentication** - Secure auth with Supabase
+- **Places** - Add and discover travel destinations
+- **Reviews** - Share travel experiences
+- **Social Trust** - Connect with trusted travelers
+- **AI Recommendations** - Smart travel suggestions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📚 Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Project Organization](./docs/PROJECT_ORGANIZATION.md)
+- [Project Structure](./docs/NEW_STRUCTURE_SUMMARY.md)
+- [Security Resolution](./docs/SECURITY_ISSUE_RESOLUTION.md)
 
-## Deploy on Vercel
+## 🗄️ Database
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Database setup scripts are located in the `database/` directory:
+- `migrations/` - Database migration scripts
+- `seed_database_fixed.sql` - Sample data for development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔧 Tech Stack
+
+- **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **AI**: OpenAI integration
+- **Deployment**: Vercel-ready
+
+## 📄 License
+
+MIT License

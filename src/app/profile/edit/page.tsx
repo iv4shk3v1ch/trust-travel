@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import NewProfileForm from '@/components/forms/NewProfileForm';
-import { loadExistingProfile, DatabaseProfile } from '@/lib/newDatabase';
-import { supabase } from '@/lib/supabase';
+import NewProfileForm from '@/features/profile/components/NewProfileForm';
+import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
+import { supabase } from '@/core/database/supabase';
 
 export default function EditProfilePage() {
   const router = useRouter();

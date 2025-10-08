@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecommendations, getImmediateRecommendations } from '@/lib/recommender';
-import { TravelPlan } from '@/types/travel-plan';
+import { getRecommendations, getImmediateRecommendations } from '@/core/services/recommender';
+import { TravelPlan } from '@/shared/types/travel-plan';
 
 export async function POST(request: NextRequest) {
   try {
