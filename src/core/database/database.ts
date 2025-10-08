@@ -32,11 +32,7 @@ export function transformFormDataToProfile(
     '65+': 70
   };
 
-  const selectedAge = ageGroupToAge[formData.basicInfo.ageGroup];
-  console.log('🔍 Age conversion - Input age group:', formData.basicInfo.ageGroup, '-> Mapped age:', selectedAge);
-  if (!selectedAge) {
-    console.error('❌ Age group not found:', formData.basicInfo.ageGroup, 'Available groups:', Object.keys(ageGroupToAge));
-  }
+  const selectedAge = ageGroupToAge[formData.basicInfo.ageGroup] || 25;
 
   // Convert spending style to budget level
   const spendingToBudget = {
@@ -49,13 +45,6 @@ export function transformFormDataToProfile(
   };
 
   const budgetLevel = spendingToBudget[formData.budget.spendingStyle as keyof typeof spendingToBudget] || 'medium';
-  console.log('💰 Budget conversion - Input spending style:', formData.budget.spendingStyle, '-> Mapped budget level:', budgetLevel);
-  if (!spendingToBudget[formData.budget.spendingStyle as keyof typeof spendingToBudget]) {
-    console.error('❌ Budget style not found:', formData.budget.spendingStyle, 'Available styles:', Object.keys(spendingToBudget));
-  }
-  if (!spendingToBudget[formData.budget.spendingStyle as keyof typeof spendingToBudget]) {
-    console.error('❌ Spending style not found:', formData.budget.spendingStyle, 'Available styles:', Object.keys(spendingToBudget));
-  }
 
   // Convert planning style to trip style
   const planningToTrip = {
@@ -68,32 +57,16 @@ export function transformFormDataToProfile(
   };
 
   const tripStyle = planningToTrip[formData.personalityAndStyle.planningStyle as keyof typeof planningToTrip] || 'mixed';
-  console.log('🎯 Planning style conversion - Input:', formData.personalityAndStyle.planningStyle, '-> Mapped trip style:', tripStyle);
-  if (!planningToTrip[formData.personalityAndStyle.planningStyle as keyof typeof planningToTrip]) {
-    console.error('❌ Planning style not found:', formData.personalityAndStyle.planningStyle, 'Available styles:', Object.keys(planningToTrip));
-  }
 
-  // Convert gender to database format - TEST DIFFERENT VALUES
-  let dbGender: string;
+  // Convert gender to database format
+  const genderMap = {
+    'Male': 'M',
+    'Female': 'F',
+    'Non-binary': 'O',
+    'Prefer not to say': 'O'
+  };
   
-  switch (formData.basicInfo.gender) {
-    case 'Male':
-      dbGender = 'M'; // Try single letter
-      break;
-    case 'Female':
-      dbGender = 'F'; // Try single letter
-      break;
-    case 'Non-binary':
-      dbGender = 'O'; // Try 'O' for Other
-      break;
-    case 'Prefer not to say':
-      dbGender = 'O'; // Try 'O' for Other
-      break;
-    default:
-      dbGender = 'O'; // Default to Other
-  }
-  
-  console.log('👤 Gender conversion ATTEMPT - Input:', formData.basicInfo.gender, '-> Database value:', dbGender);
+  const dbGender = genderMap[formData.basicInfo.gender as keyof typeof genderMap] || 'O';
   
   return {
     id: userId,
@@ -177,85 +150,21 @@ export function transformProfileToFormData(profile: ProfileData): UserPreference
 
 // Save profile to database
 export async function saveProfile(formData: UserPreferences): Promise<void> {
-  console.log('=== SAVE PROFILE DEBUG START ===');
-  console.log('Input formData:', JSON.stringify(formData, null, 2));
-  
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    console.error('No authenticated user found');
     throw new Error('User not authenticated');
   }
 
-  console.log('Authenticated user ID:', user.id);
+  const profileData = transformFormDataToProfile(formData, user.id);
   
-  // First, let's see what's currently in the database
-  const { data: currentProfile, error: fetchError } = await supabase
+  const { error } = await supabase
     .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    .upsert(profileData);
   
-  if (!fetchError && currentProfile) {
-    console.log('🔍 Current profile in database BEFORE update:', JSON.stringify(currentProfile, null, 2));
-  } else {
-    console.log('No existing profile found or error fetching:', fetchError?.message);
+  if (error) {
+    console.error('Error saving profile:', error);
+    throw new Error(`Failed to save profile: ${error.message}`);
   }
-  
-  // GENDER TEST: Try multiple gender values to find what works
-  const genderInput = formData.basicInfo.gender;
-  console.log('🧪 TESTING GENDER VALUES for input:', genderInput);
-  
-  const genderTestValues = [
-    'male', 'female', 'other',  // lowercase full words
-    'Male', 'Female', 'Other',  // capitalized
-    'MALE', 'FEMALE', 'OTHER',  // uppercase
-    'M', 'F', 'O',              // single letters uppercase
-    'm', 'f', 'o',              // single letters lowercase
-    'man', 'woman', 'non-binary', // alternative terms
-    'prefer-not-to-say', 'unknown', 'unspecified'  // other options
-  ];
-  
-  for (const testGender of genderTestValues) {
-    console.log(`🧪 Testing gender value: "${testGender}"`);
-    
-    const testProfileData = {
-      id: user.id,
-      full_name: `${formData.basicInfo.firstName} ${formData.basicInfo.lastName}`,
-      age: 25, // Simple test age
-      gender: testGender,
-      budget_level: 'medium',
-      activities: ['hiking'],
-      place_types: ['nature'],
-      food_preferences: ['local'],
-      food_restrictions: [],
-      personality_traits: ['adventurous'],
-      trip_style: 'mixed',
-      travel_with: 'Solo'
-    };
-    
-    // Delete existing profile first
-    await supabase.from('profiles').delete().eq('id', user.id);
-    
-    // Try inserting with this gender value
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert(testProfileData)
-      .select();
-    
-    if (!error) {
-      console.log(`✅ SUCCESS! Gender value "${testGender}" works!`);
-      console.log('✅ Successful insert data:', data);
-      
-      // Now use this working gender value for the real data
-      const workingGender = testGender;
-      break;
-    } else {
-      console.log(`❌ Gender value "${testGender}" failed:`, error.message);
-    }
-  }
-  
-  console.log('🧪 Gender testing complete');
-  throw new Error('Gender testing mode - check console for results');
 }
 
 // Load profile from database

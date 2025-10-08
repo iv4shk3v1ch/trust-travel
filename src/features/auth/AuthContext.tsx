@@ -100,40 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (createError) {
         console.error('Error creating profile:', createError)
-        
-        // If creation failed, try with just basic fields
-        console.log('Retrying with minimal profile data')
-        const minimalProfile = { 
-          id: userId, 
-          full_name: fullName,
-          age: '',
-          gender: '',
-          budget_level: 'medium',
-          activities: [],
-          place_types: [],
-          food_preferences: [],
-          food_restrictions: [],
-          personality_traits: [],
-          trip_style: ''
-        }
-        
-        const { data: retryProfile, error: retryError } = await supabase
-          .from('profiles')
-          .insert(minimalProfile)
-          .select()
-          .single()
-
-        if (retryError) {
-          console.error('Failed to create even minimal profile:', retryError)
-          setError('Failed to create profile')
-        } else {
-          console.log('Minimal profile created successfully:', retryProfile)
-          setProfile(retryProfile)
-        }
-      } else {
-        console.log('Profile created successfully:', newProfile)
-        setProfile(newProfile)
+        setError('Failed to create profile. Please try again.')
+        return
       }
+
+      console.log('Profile created successfully:', newProfile)
+      setProfile(newProfile)
     } catch (err) {
       console.error('Error in createMissingProfile:', err)
       setError('Failed to create profile')

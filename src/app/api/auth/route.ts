@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-  try {
-    // Handle GET request for auth
-    return NextResponse.json({ message: 'Auth GET endpoint' });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  return NextResponse.json({ message: 'Auth GET endpoint' });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     
@@ -20,7 +12,7 @@ export async function POST(request: NextRequest) {
     console.log('Auth POST request:', body);
     
     return NextResponse.json({ message: 'Auth POST endpoint', data: body });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
