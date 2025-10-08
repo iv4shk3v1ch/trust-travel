@@ -41,7 +41,8 @@ const DESTINATION_CATEGORY_MAPPING = {
   'trento-city': [
     'restaurant', 'bar', 'coffee-shop', 'fast-food',
     'museum', 'theater', 'music-venue', 'historical-site',
-    'shopping', 'hotel'
+    'shopping', 'hotel', 'park', 'hiking-trail', 'viewpoint',
+    'adventure-activity', 'sports-facility', 'spa-wellness'
   ] as PlaceCategory[],
   
   'historic-villages': [
