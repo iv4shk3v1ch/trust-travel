@@ -30,13 +30,13 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
   const [recommendations, setRecommendations] = useState<RecommendedPlace[]>([]);
   const [preferences, setPreferences] = useState<ChatbotPreferences | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(true); // Show debug by default
+  const [showDebugInfo, setShowDebugInfo] = useState(true);
   const [lastApiResponse, setLastApiResponse] = useState<any>(null);
+  const [allRecommendations, setAllRecommendations] = useState<RecommendedPlace[]>([]); // Cumulative recommendations
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +100,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Always check for places, not just when isComplete
+      // Always check for places, and add them to the cumulative list
       if (data.places && data.places.length > 0) {
         console.log(`🎯 Found ${data.places.length} places to display on map`);
         console.log('📍 Place details:', data.places.map((r: RecommendedPlace) => ({ 
@@ -109,11 +109,21 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           rating: r.average_rating,
           coordinates: { lat: r.latitude, lng: r.longitude }
         })));
+        
+        // Add new places to existing recommendations (cumulative)
+        setAllRecommendations(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPlaces = data.places.filter((p: RecommendedPlace) => !existingIds.has(p.id));
+          console.log(`📍 Adding ${newPlaces.length} new places to map (${prev.length} existing)`);
+          return [...prev, ...newPlaces];
+        });
+        
+        // Also update current recommendations for other UI elements
         setRecommendations(data.places);
       }
 
-      if (data.isComplete) {
-        setIsComplete(true);
+      // Store preferences for debug display
+      if (data.preferences) {
         setPreferences(data.preferences);
       }
 
@@ -147,8 +157,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
         timestamp: new Date()
       }
     ]);
-    setIsComplete(false);
     setRecommendations([]);
+    setAllRecommendations([]); // Clear cumulative recommendations
     setPreferences(null);
     setShowMobileMap(false);
     inputRef.current?.focus();
@@ -166,7 +176,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
   // Mobile Map Modal Component
   const MobileMapModal = () => {
-    if (!showMobileMap || !isComplete || recommendations.length === 0) return null;
+    if (!showMobileMap || allRecommendations.length === 0) return null;
 
     return (
       <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -186,7 +196,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           </div>
           <div className="flex-1">
             <InteractiveMap 
-              recommendations={recommendations} 
+              recommendations={allRecommendations} 
               className="h-full w-full"
             />
           </div>
@@ -205,7 +215,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <span className="mr-2">🗺️</span>
-              Fullscreen Map - {recommendations.length} Places
+              Fullscreen Map - {allRecommendations.length} Places
             </h3>
             <Button
               onClick={toggleFullscreenMap}
@@ -217,7 +227,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           </div>
           <div className="flex-1">
             <InteractiveMap 
-              recommendations={recommendations} 
+              recommendations={allRecommendations} 
               className="h-full w-full"
             />
           </div>
@@ -237,13 +247,13 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
               <div>
                 <h3 className="font-semibold">AI-Powered Recommendations</h3>
                 <p className="text-sm text-white/80">
-                  {isComplete ? 'Ready to explore!' : 'Discover amazing places in Trento'}
+                  {allRecommendations.length > 0 ? `${allRecommendations.length} places discovered!` : 'Discover amazing places in Trento'}
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               {/* Mobile Map Button - Only show on mobile when we have recommendations */}
-              {isComplete && recommendations.length > 0 && (
+              {allRecommendations.length > 0 && (
                 <Button
                   onClick={toggleMobileMap}
                   className="lg:hidden bg-white/20 border-white/30 hover:bg-white/30 text-white px-3 py-2 text-sm"
@@ -368,9 +378,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
             </div>
           )}
 
-          {/* Input Area */}
-          {!isComplete && (
-            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+          {/* Input Area - Always available for continuous conversation */}
+          <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
               <div className="flex space-x-3">
                 <input
                   ref={inputRef}
@@ -378,7 +387,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Try: 'I want cozy restaurants with local cuisine' or 'Show me hiking trails with scenic views'"
+                  placeholder="Ask me anything: 'restaurants in old town', 'add hiking trails', 'show me bars for tonight'..."
                   className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white transition-all duration-200"
                   disabled={isLoading}
                 />
@@ -392,11 +401,9 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                 </Button>
               </div>
             </div>
-          )}
 
-          {/* Chat complete actions */}
-          {isComplete && (
-            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+          {/* Chat actions - always show restart button */}
+          <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
               <Button
                 onClick={restartChat}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 py-3 transition-all duration-200"
@@ -407,12 +414,11 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                 </span>
               </Button>
             </div>
-          )}
         </div>
 
         {/* Right Side - Map or Welcome Screen */}
         <div className="hidden lg:flex lg:w-1/2 flex-col border-l border-gray-200 dark:border-gray-700">
-          {isComplete && recommendations.length > 0 ? (
+          {allRecommendations.length > 0 ? (
             <>
               {/* Enhanced Dark Theme Map Header */}
               <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg">
@@ -422,7 +428,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                     Locations Map
                   </h3>
                   <p className="text-sm text-gray-300">
-                    {recommendations.length} places found • Click markers for details
+                    {allRecommendations.length} places found • Click markers for details
                   </p>
                 </div>
                 <Button
@@ -440,7 +446,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
               <div className="flex-1 relative">
                 <div className="absolute inset-0 bg-gray-900 rounded-b-lg overflow-hidden">
                   <InteractiveMap 
-                    recommendations={recommendations} 
+                    recommendations={allRecommendations} 
                     className="h-full w-full"
                   />
                 </div>

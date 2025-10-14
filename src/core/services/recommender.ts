@@ -217,11 +217,18 @@ export async function getRecommendations(travelPlan: TravelPlan, currentUserId?:
       console.log(`Social bias enabled: ${trustedUsers.length} trusted users`);
     }
     
-    // Step 2: Get relevant place categories based on destination area
-    const relevantCategories = DESTINATION_CATEGORY_MAPPING[travelPlan.destination.area as keyof typeof DESTINATION_CATEGORY_MAPPING] || [
+    // Step 2: Get relevant place categories - use specific categories if provided, otherwise use destination mapping
+    const relevantCategories = travelPlan.categories || DESTINATION_CATEGORY_MAPPING[travelPlan.destination.area as keyof typeof DESTINATION_CATEGORY_MAPPING] || [
       // Default fallback categories if area not found
       'restaurant', 'bar', 'coffee-shop', 'museum', 'park', 'attraction'
     ];
+    
+    // Log which category source we're using
+    if (travelPlan.categories) {
+      console.log('🎯 Using specific categories from preferences:', relevantCategories);
+    } else {
+      console.log('📍 Using destination-based categories:', relevantCategories);
+    }
     
     // Step 3: Combine user's experience tags with travel type context
     const allPreferredTags = [
@@ -263,24 +270,31 @@ export async function getRecommendations(travelPlan: TravelPlan, currentUserId?:
     // Step 5: Process and score each place (including social bias)
     const recommendations: RecommendedPlace[] = [];
     
-    // Check if this is a general query (many categories, general tags)
-    const isGeneralQuery = relevantCategories.length >= 5 || 
-                          allPreferredTags.some(tag => ['popular', 'highly-rated', 'authentic-local'].includes(tag)) ||
-                          allPreferredTags.length <= 2; // Also treat requests with very few specific tags as general
+    // Check if this is a general query vs specific query
+    const isSpecificCategoryQuery = travelPlan.categories && travelPlan.categories.length <= 3;
+    const isGeneralQuery = !isSpecificCategoryQuery && (
+      relevantCategories.length >= 5 || 
+      allPreferredTags.some(tag => ['popular', 'highly-rated', 'authentic-local'].includes(tag)) ||
+      allPreferredTags.length <= 2
+    );
     
-    console.log(`🎯 Query analysis: isGeneral=${isGeneralQuery}, categories=${relevantCategories.length}, tags=${allPreferredTags.length}`);
+    console.log(`🎯 Query analysis: isGeneral=${isGeneralQuery}, isSpecific=${isSpecificCategoryQuery}, categories=${relevantCategories.length}, tags=${allPreferredTags.length}`);
     
     for (const place of places) {
       const processedPlace = processPlaceForRecommendation(place, allPreferredTags, trustedUsers);
       if (processedPlace) {
-        if (isGeneralQuery) {
+        if (isSpecificCategoryQuery) {
+          // For specific category queries (like "restaurants"), include all matches from those categories
+          recommendations.push(processedPlace);
+          console.log(`🍽️ Specific category query: included ${processedPlace.name} (${processedPlace.category}, rating: ${processedPlace.average_rating})`);
+        } else if (isGeneralQuery) {
           // For general queries, be much more inclusive - prioritize high-quality places
           if (processedPlace.average_rating >= 3.5 || processedPlace.tag_confidence > 0) {
             recommendations.push(processedPlace);
             console.log(`✅ General query: included ${processedPlace.name} (rating: ${processedPlace.average_rating}, tags: ${processedPlace.tag_confidence})`);
           }
         } else {
-          // For specific queries, require some tag confidence or high rating
+          // For specific queries with mixed categories, require some tag confidence or high rating
           if (processedPlace.tag_confidence > 0 || processedPlace.average_rating >= 4.5) {
             recommendations.push(processedPlace);
             console.log(`✅ Specific query: included ${processedPlace.name} (rating: ${processedPlace.average_rating}, tags: ${processedPlace.tag_confidence})`);

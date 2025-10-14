@@ -14,6 +14,7 @@ export interface TravelPlan {
   specialNeeds: string[];
   completedSteps: number[];
   isComplete: boolean;
+  categories?: string[]; // Optional specific categories to filter by
 }
 
 // Available options

@@ -103,21 +103,9 @@ export class ChatbotService {
     preferences?: ChatbotPreferences;
   }> {
     try {
-      // Force recommendations after 2 exchanges to prevent endless conversations
-      const userMessageCount = conversationHistory.filter(msg => msg.role === 'user').length;
-      const shouldForceRecommendations = userMessageCount >= 1; // Force after first user message
-      
-      if (shouldForceRecommendations) {
-        console.log('🔄 Forcing recommendations after conversation exchange');
-        console.log('👤 User ID for personalization:', userId || 'anonymous');
-        const fallbackPrefs = this.createFallbackPreferences(userMessage);
-        console.log('🎯 Forced preferences:', fallbackPrefs);
-        return {
-          response: "Got it! Let me find the perfect places for you...",
-          isComplete: true,
-          preferences: fallbackPrefs
-        };
-      }
+      // No more forced recommendations - let the conversation flow naturally
+      console.log('�️ Processing user message naturally');
+      console.log('👤 User ID for personalization:', userId || 'anonymous');
 
       // Prepare conversation for Groq
       const messages = [
@@ -208,6 +196,12 @@ export class ChatbotService {
         console.log('🔒 No user context provided, using chat preferences only');
       }
 
+      console.log('📋 Enhanced preferences:', {
+        categories: enhancedPreferences.categories,
+        experienceTags: enhancedPreferences.experienceTags,
+        destination: enhancedPreferences.destination
+      });
+
       // Convert chatbot preferences to travel plan format for recommender
       const travelPlan = {
         destination: {
@@ -220,6 +214,7 @@ export class ChatbotService {
         },
         travelType: 'solo' as const, // Default, could be enhanced later
         experienceTags: enhancedPreferences.experienceTags as ExperienceTag[],
+        categories: enhancedPreferences.categories, // Pass specific categories to recommender
         specialNeeds: [],
         completedSteps: [1, 2, 3, 4, 5, 6],
         isComplete: true
@@ -228,6 +223,7 @@ export class ChatbotService {
       console.log('🚀 Calling recommender with enhanced travel plan:', {
         experienceTags: travelPlan.experienceTags,
         destination: travelPlan.destination,
+        categories: travelPlan.categories,
         userId: userId
       });
 
@@ -263,8 +259,29 @@ export class ChatbotService {
     const categories: string[] = [];
     const experienceTags: string[] = [];
     
-    // Check for general/broad queries first
-    const isGeneralQuery = message.includes('top places') || 
+    // Check for specific category queries first (highest priority)
+    const isRestaurantQuery = message.includes('restaurant') || message.includes('food') || message.includes('eat') || 
+                             message.includes('dining') || message.includes('meal') || message.includes('dinner') || 
+                             message.includes('lunch') || message.includes('breakfast') || message.includes('brunch');
+    
+    const isHikingQuery = message.includes('hike') || message.includes('hiking') || message.includes('trail') || 
+                         message.includes('mountain') || message.includes('trek');
+    
+    const isNatureQuery = message.includes('nature') || message.includes('outdoor') || message.includes('forest') || 
+                         message.includes('scenery') || message.includes('view');
+    
+    const isBarQuery = message.includes('bar') || message.includes('drink') || message.includes('cocktail') || 
+                      message.includes('beer') || message.includes('pub') || message.includes('wine');
+    
+    const isCoffeeQuery = message.includes('coffee') || message.includes('cafe');
+    
+    const isMuseumQuery = message.includes('museum') || message.includes('art') || message.includes('culture') || 
+                         message.includes('history') || message.includes('exhibition');
+    
+    // Check for general/broad queries only if no specific category detected
+    const isGeneralQuery = !isRestaurantQuery && !isHikingQuery && !isNatureQuery && !isBarQuery && 
+                          !isCoffeeQuery && !isMuseumQuery && (
+                          message.includes('top places') || 
                           message.includes('best places') || 
                           message.includes('what to visit') || 
                           message.includes('places to visit') || 
@@ -278,9 +295,14 @@ export class ChatbotService {
                           message.includes('best things') ||
                           message.includes('what to do') ||
                           message.includes('attractions') ||
-                          (message.includes('trento') && (message.includes('visit') || message.includes('see') || message.includes('explore')));
+                          (message.includes('trento') && (message.includes('visit') || message.includes('see') || message.includes('explore'))));
     
-    if (isGeneralQuery) {
+    if (isRestaurantQuery) {
+      categories.push('restaurant');
+      experienceTags.push('highly-rated', 'authentic-local');
+      console.log('🍽️ Detected restaurant query - using restaurant category only');
+    } else if (isGeneralQuery) {
+    } else if (isGeneralQuery) {
       // For general queries, include diverse categories to show variety
       categories.push(
         'restaurant', 'museum', 'historical-site', 'park', 'viewpoint', 
@@ -290,32 +312,24 @@ export class ChatbotService {
       console.log('🎯 Detected general query - using diverse categories');
     } else {
       // Enhanced keyword matching for specific categories
-      if (message.includes('hike') || message.includes('hiking') || message.includes('trail') || 
-          message.includes('mountain') || message.includes('trek')) {
+      if (isHikingQuery) {
         categories.push('hiking-trail', 'park', 'viewpoint');
         experienceTags.push('scenic-beauty', 'peaceful');
       }
-      else if (message.includes('nature') || message.includes('outdoor') || message.includes('forest') || 
-               message.includes('scenery') || message.includes('view')) {
+      else if (isNatureQuery) {
         categories.push('park', 'viewpoint', 'hiking-trail');
         experienceTags.push('scenic-beauty', 'peaceful');
       }
-      else if (message.includes('restaurant') || message.includes('food') || message.includes('eat') || 
-               message.includes('dining') || message.includes('meal')) {
-        categories.push('restaurant');
-      }
-      else if (message.includes('bar') || message.includes('drink') || message.includes('cocktail') || 
-               message.includes('beer') || message.includes('pub') || message.includes('wine')) {
+      else if (isBarQuery) {
         categories.push('bar');
         if (message.includes('friend') || message.includes('hangout') || message.includes('social')) {
           experienceTags.push('friends-group');
         }
       }
-      else if (message.includes('coffee') || message.includes('cafe')) {
+      else if (isCoffeeQuery) {
         categories.push('coffee-shop');
       }
-      else if (message.includes('museum') || message.includes('art') || message.includes('culture') || 
-               message.includes('history') || message.includes('exhibition')) {
+      else if (isMuseumQuery) {
         categories.push('museum', 'historical-site');
         experienceTags.push('cultural');
       }
@@ -379,6 +393,22 @@ export class ChatbotService {
       destination: 'trento-city',
       budget: 'medium',
       summary: `Based on your request: ${userMessage.substring(0, 80)}...`
+    };
+  }
+
+  /**
+   * Create preferences specifically for must-see queries - focusing on top-rated, famous places
+   */
+  private createMustSeePreferences(): ChatbotPreferences {
+    return {
+      categories: [
+        'museum', 'historical-site', 'viewpoint', 'attraction', 
+        'restaurant', 'park', 'religious-site', 'theater'
+      ],
+      experienceTags: ['highly-rated', 'popular', 'must-visit', 'famous', 'iconic'],
+      destination: 'trento-city',
+      budget: 'medium',
+      summary: 'Must-see attractions and top-rated places in Trento - the absolute highlights'
     };
   }
 }
