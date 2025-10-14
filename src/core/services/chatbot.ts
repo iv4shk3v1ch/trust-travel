@@ -151,8 +151,13 @@ export class ChatbotService {
           try {
             const preferences = JSON.parse(jsonMatch[0]) as ChatbotPreferences;
             console.log('✅ Successfully parsed preferences:', preferences);
+            
+            // Extract the natural response part (everything before READY_FOR_RECOMMENDATIONS)
+            const naturalResponse = response.split('READY_FOR_RECOMMENDATIONS')[0].trim();
+            const finalResponse = naturalResponse || "Perfect! I understand what you're looking for. Let me find the best places for you...";
+            
             return {
-              response: "Perfect! I understand what you're looking for. Let me find the best places for you...",
+              response: finalResponse,
               isComplete: true,
               preferences
             };
@@ -229,16 +234,22 @@ export class ChatbotService {
       // Get recommendations using existing recommender system with user context
       const recommendations = await getRecommendations(travelPlan, userId);
 
-      // Filter by categories if specified
-      if (enhancedPreferences.categories.length > 0) {
+      // Only filter by categories for specific queries, not general ones
+      const isGeneralQuery = enhancedPreferences.categories.length >= 5 ||
+                            enhancedPreferences.experienceTags.some(tag => 
+                              ['popular', 'highly-rated', 'authentic-local'].includes(tag)
+                            );
+      
+      if (!isGeneralQuery && enhancedPreferences.categories.length > 0 && enhancedPreferences.categories.length <= 3) {
+        // Only filter for specific queries with few categories
         const filtered = recommendations.filter(place => 
           enhancedPreferences.categories.includes(place.category)
         );
-        console.log(`🎯 Filtered recommendations: ${filtered.length}/${recommendations.length} places`);
+        console.log(`🎯 Specific query - filtered recommendations: ${filtered.length}/${recommendations.length} places`);
         return filtered;
       }
 
-      console.log(`✨ Returning ${recommendations.length} personalized recommendations`);
+      console.log(`✨ General query - returning all ${recommendations.length} diverse recommendations`);
       return recommendations;
     } catch (error) {
       console.error('Error getting recommendations from preferences:', error);
@@ -252,45 +263,77 @@ export class ChatbotService {
     const categories: string[] = [];
     const experienceTags: string[] = [];
     
-    // Enhanced keyword matching for categories
-    if (message.includes('hike') || message.includes('hiking') || message.includes('trail') || 
-        message.includes('mountain') || message.includes('trek')) {
-      categories.push('hiking-trail', 'park', 'viewpoint');
-      experienceTags.push('scenic-beauty', 'peaceful');
-    }
-    else if (message.includes('nature') || message.includes('outdoor') || message.includes('forest') || 
-             message.includes('scenery') || message.includes('view')) {
-      categories.push('park', 'viewpoint', 'hiking-trail');
-      experienceTags.push('scenic-beauty', 'peaceful');
-    }
-    else if (message.includes('restaurant') || message.includes('food') || message.includes('eat') || 
-             message.includes('dining') || message.includes('meal')) {
-      categories.push('restaurant');
-    }
-    else if (message.includes('bar') || message.includes('drink') || message.includes('cocktail') || 
-             message.includes('beer') || message.includes('pub') || message.includes('wine')) {
-      categories.push('bar');
-      if (message.includes('friend') || message.includes('hangout') || message.includes('social')) {
-        experienceTags.push('friends-group');
+    // Check for general/broad queries first
+    const isGeneralQuery = message.includes('top places') || 
+                          message.includes('best places') || 
+                          message.includes('what to visit') || 
+                          message.includes('places to visit') || 
+                          message.includes('things to do') || 
+                          message.includes('recommendations') ||
+                          message.includes('show me places') ||
+                          message.includes('popular places') ||
+                          message.includes('must visit') ||
+                          message.includes('tourist attractions') ||
+                          message.includes('top things') ||
+                          message.includes('best things') ||
+                          message.includes('what to do') ||
+                          message.includes('attractions') ||
+                          (message.includes('trento') && (message.includes('visit') || message.includes('see') || message.includes('explore')));
+    
+    if (isGeneralQuery) {
+      // For general queries, include diverse categories to show variety
+      categories.push(
+        'restaurant', 'museum', 'historical-site', 'park', 'viewpoint', 
+        'coffee-shop', 'bar', 'attraction', 'adventure-activity'
+      );
+      experienceTags.push('popular', 'highly-rated', 'authentic-local');
+      console.log('🎯 Detected general query - using diverse categories');
+    } else {
+      // Enhanced keyword matching for specific categories
+      if (message.includes('hike') || message.includes('hiking') || message.includes('trail') || 
+          message.includes('mountain') || message.includes('trek')) {
+        categories.push('hiking-trail', 'park', 'viewpoint');
+        experienceTags.push('scenic-beauty', 'peaceful');
       }
-    }
-    else if (message.includes('coffee') || message.includes('cafe')) {
-      categories.push('coffee-shop');
-    }
-    else if (message.includes('museum') || message.includes('art') || message.includes('culture') || 
-             message.includes('history') || message.includes('exhibition')) {
-      categories.push('museum', 'historical-site');
-      experienceTags.push('cultural');
-    }
-    else if (message.includes('adventure') || message.includes('sport') || message.includes('activity')) {
-      categories.push('adventure-activity', 'sports-facility');
-      experienceTags.push('energetic');
-    }
-    else if (message.includes('beach') || message.includes('water') || message.includes('swim')) {
-      categories.push('beach', 'water-activity');
-    }
-    else if (message.includes('shop') || message.includes('shopping') || message.includes('buy')) {
-      categories.push('shopping');
+      else if (message.includes('nature') || message.includes('outdoor') || message.includes('forest') || 
+               message.includes('scenery') || message.includes('view')) {
+        categories.push('park', 'viewpoint', 'hiking-trail');
+        experienceTags.push('scenic-beauty', 'peaceful');
+      }
+      else if (message.includes('restaurant') || message.includes('food') || message.includes('eat') || 
+               message.includes('dining') || message.includes('meal')) {
+        categories.push('restaurant');
+      }
+      else if (message.includes('bar') || message.includes('drink') || message.includes('cocktail') || 
+               message.includes('beer') || message.includes('pub') || message.includes('wine')) {
+        categories.push('bar');
+        if (message.includes('friend') || message.includes('hangout') || message.includes('social')) {
+          experienceTags.push('friends-group');
+        }
+      }
+      else if (message.includes('coffee') || message.includes('cafe')) {
+        categories.push('coffee-shop');
+      }
+      else if (message.includes('museum') || message.includes('art') || message.includes('culture') || 
+               message.includes('history') || message.includes('exhibition')) {
+        categories.push('museum', 'historical-site');
+        experienceTags.push('cultural');
+      }
+      else if (message.includes('adventure') || message.includes('sport') || message.includes('activity')) {
+        categories.push('adventure-activity', 'sports-facility');
+        experienceTags.push('energetic');
+      }
+      else if (message.includes('beach') || message.includes('water') || message.includes('swim')) {
+        categories.push('beach', 'water-activity');
+      }
+      else if (message.includes('shop') || message.includes('shopping') || message.includes('buy')) {
+        categories.push('shopping');
+      }
+      else {
+        // Default for unclear specific queries - still show some variety
+        categories.push('restaurant', 'museum', 'park');
+        experienceTags.push('authentic-local');
+      }
     }
 
     // Enhanced keyword matching for experience tags
@@ -323,9 +366,16 @@ export class ChatbotService {
       experienceTags.push('authentic-local');
     }
 
+    console.log(`🎯 Fallback preferences created:`, {
+      isGeneral: isGeneralQuery,
+      categories: categories.length,
+      tags: experienceTags.length,
+      message: userMessage.substring(0, 50)
+    });
+
     return {
-      categories: categories.length > 0 ? categories : ['restaurant'], // Default to restaurant only if nothing matches
-      experienceTags: experienceTags.length > 0 ? experienceTags : ['authentic-local'],
+      categories: categories,
+      experienceTags: experienceTags,
       destination: 'trento-city',
       budget: 'medium',
       summary: `Based on your request: ${userMessage.substring(0, 80)}...`

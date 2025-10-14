@@ -263,25 +263,73 @@ export async function getRecommendations(travelPlan: TravelPlan, currentUserId?:
     // Step 5: Process and score each place (including social bias)
     const recommendations: RecommendedPlace[] = [];
     
+    // Check if this is a general query (many categories, general tags)
+    const isGeneralQuery = relevantCategories.length >= 5 || 
+                          allPreferredTags.some(tag => ['popular', 'highly-rated', 'authentic-local'].includes(tag)) ||
+                          allPreferredTags.length <= 2; // Also treat requests with very few specific tags as general
+    
+    console.log(`🎯 Query analysis: isGeneral=${isGeneralQuery}, categories=${relevantCategories.length}, tags=${allPreferredTags.length}`);
+    
     for (const place of places) {
       const processedPlace = processPlaceForRecommendation(place, allPreferredTags, trustedUsers);
       if (processedPlace) {
-        // Include places with any confidence > 0, or if we have very few results, include all with reviews
-        if (processedPlace.tag_confidence > 0 || allPreferredTags.length === 0) {
-          recommendations.push(processedPlace);
+        if (isGeneralQuery) {
+          // For general queries, be much more inclusive - prioritize high-quality places
+          if (processedPlace.average_rating >= 3.5 || processedPlace.tag_confidence > 0) {
+            recommendations.push(processedPlace);
+            console.log(`✅ General query: included ${processedPlace.name} (rating: ${processedPlace.average_rating}, tags: ${processedPlace.tag_confidence})`);
+          }
+        } else {
+          // For specific queries, require some tag confidence or high rating
+          if (processedPlace.tag_confidence > 0 || processedPlace.average_rating >= 4.5) {
+            recommendations.push(processedPlace);
+            console.log(`✅ Specific query: included ${processedPlace.name} (rating: ${processedPlace.average_rating}, tags: ${processedPlace.tag_confidence})`);
+          }
         }
       }
     }
     
-    // If we still have no recommendations, include highly rated places regardless of tags
+    // If we still have no recommendations, include all highly rated places
     if (recommendations.length === 0 && places.length > 0) {
-      console.log('No tag matches found, falling back to highly rated places');
+      console.log('No matches found, falling back to all highly rated places');
       for (const place of places) {
         const processedPlace = processPlaceForRecommendation(place, [], trustedUsers);
         if (processedPlace && processedPlace.average_rating >= 4.0) {
           recommendations.push(processedPlace);
         }
       }
+    }
+    
+    // For general queries, ensure diversity across categories
+    if (isGeneralQuery && recommendations.length > 5) {
+      console.log('🎯 General query detected - ensuring category diversity');
+      const diverseRecommendations = [];
+      const categoriesUsed = new Set<string>();
+      
+      // Sort by rating first to get best quality
+      const sortedByRating = [...recommendations].sort((a, b) => 
+        (b.average_rating + b.social_trust_boost) - (a.average_rating + a.social_trust_boost)
+      );
+      
+      // Add top place from each category first
+      for (const place of sortedByRating) {
+        if (!categoriesUsed.has(place.category) && diverseRecommendations.length < 10) {
+          diverseRecommendations.push(place);
+          categoriesUsed.add(place.category);
+        }
+      }
+      
+      // Fill remaining slots with highest rated regardless of category
+      for (const place of sortedByRating) {
+        if (diverseRecommendations.length >= 15) break;
+        if (!diverseRecommendations.some(p => p.id === place.id)) {
+          diverseRecommendations.push(place);
+        }
+      }
+      
+      // Use diverse recommendations for general queries
+      recommendations.length = 0;
+      recommendations.push(...diverseRecommendations);
     }
     
     // Step 6: Sort by comprehensive ranking score

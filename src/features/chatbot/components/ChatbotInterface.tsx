@@ -1,10 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/shared/components/Button';
 import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
 import { RecommendedPlace } from '@/core/services/recommender';
-import { InteractiveMap } from './InteractiveMap';
+
+// Dynamically import the map to avoid SSR issues
+const InteractiveMap = dynamic(
+  () => import('./InteractiveMap').then(mod => ({ default: mod.InteractiveMap })),
+  {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">Loading map...</div>
+  }
+);
 
 interface ChatbotInterfaceProps {
   onClose?: () => void;
@@ -26,6 +35,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   const [preferences, setPreferences] = useState<ChatbotPreferences | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(true); // Show debug by default
+  const [lastApiResponse, setLastApiResponse] = useState<any>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +80,16 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
       }
 
       const data = await response.json();
+      
+      // Save for debugging
+      setLastApiResponse(data);
+      
+      console.log('🔍 API Response:', {
+        success: data.success,
+        isComplete: data.isComplete,
+        placesCount: data.places?.length || 0,
+        hasPreferences: !!data.preferences
+      });
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -79,12 +100,21 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
       setMessages(prev => [...prev, assistantMessage]);
 
+      // Always check for places, not just when isComplete
+      if (data.places && data.places.length > 0) {
+        console.log(`🎯 Found ${data.places.length} places to display on map`);
+        console.log('📍 Place details:', data.places.map((r: RecommendedPlace) => ({ 
+          name: r.name, 
+          category: r.category, 
+          rating: r.average_rating,
+          coordinates: { lat: r.latitude, lng: r.longitude }
+        })));
+        setRecommendations(data.places);
+      }
+
       if (data.isComplete) {
         setIsComplete(true);
         setPreferences(data.preferences);
-        if (data.recommendations) {
-          setRecommendations(data.recommendations);
-        }
       }
 
     } catch (error) {
@@ -274,6 +304,69 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
           <div ref={messagesEndRef} />
           </div>
+
+          {/* Debug Panel */}
+          {lastApiResponse && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-yellow-800 dark:text-yellow-200">🐛 Debug Info</h3>
+                <button
+                  onClick={() => setShowDebugInfo(!showDebugInfo)}
+                  className="text-yellow-600 dark:text-yellow-300 hover:text-yellow-800 dark:hover:text-yellow-100"
+                >
+                  {showDebugInfo ? '🔽' : '▶️'}
+                </button>
+              </div>
+              
+              {showDebugInfo && (
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Response Status:</p>
+                      <p className="text-yellow-700 dark:text-yellow-300">
+                        {lastApiResponse.success ? '✅ Success' : '❌ Failed'} 
+                        {lastApiResponse.isComplete && ' | 🏁 Complete'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Places Found:</p>
+                      <p className="text-yellow-700 dark:text-yellow-300">
+                        {lastApiResponse.places?.length || 0} locations
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {lastApiResponse.preferences && (
+                    <div>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Detected Preferences:</p>
+                      <div className="bg-yellow-100 dark:bg-yellow-800/30 p-2 rounded text-yellow-800 dark:text-yellow-200">
+                        <p><strong>Categories:</strong> {lastApiResponse.preferences.categories?.join(', ') || 'None'}</p>
+                        <p><strong>Experience Tags:</strong> {lastApiResponse.preferences.experienceTags?.join(', ') || 'None'}</p>
+                        <p><strong>Destination:</strong> {lastApiResponse.preferences.destination || 'None'}</p>
+                        <p><strong>Budget:</strong> {lastApiResponse.preferences.budget || 'None'}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {lastApiResponse.places && lastApiResponse.places.length > 0 && (
+                    <div>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Places Preview:</p>
+                      <div className="bg-yellow-100 dark:bg-yellow-800/30 p-2 rounded text-yellow-800 dark:text-yellow-200 max-h-32 overflow-y-auto">
+                        {lastApiResponse.places.slice(0, 5).map((place: any, index: number) => (
+                          <p key={index} className="text-xs">
+                            • {place.name} ({place.category}) - ⭐{place.average_rating}
+                          </p>
+                        ))}
+                        {lastApiResponse.places.length > 5 && (
+                          <p className="text-xs italic">...and {lastApiResponse.places.length - 5} more</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Input Area */}
           {!isComplete && (

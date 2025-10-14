@@ -1,47 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { chatbotService } from '@/core/services/chatbot';
-import { ChatMessage } from '@/shared/types/chatbot';
+﻿import { NextRequest, NextResponse } from "next/server";
+import { chatbotService } from "@/core/services/chatbot";
+import { ChatMessage } from "@/shared/types/chatbot";
 
 export async function POST(request: NextRequest) {
   try {
+    console.log(" Chatbot API endpoint called");
+    
     const body = await request.json();
-    const { message, conversationHistory }: { 
-      message: string; 
-      conversationHistory?: ChatMessage[] 
-    } = body;
+    const { message, conversationHistory } = body;
 
-    if (!message || typeof message !== 'string') {
+    console.log(" Received message:", message);
+    console.log(" Conversation history length:", conversationHistory?.length || 0);
+
+    if (!message || typeof message !== "string") {
       return NextResponse.json(
-        { error: 'Message is required and must be a string' },
+        { success: false, error: "Message is required and must be a string" },
         { status: 400 }
       );
     }
 
-    // For now, skip user authentication in API route to avoid complexity
-    // This can be enhanced later with proper server-side auth
-    const userProfile = null;
-    
-    console.log('🔄 Processing chatbot request without user context for now');
-    
-    // Process the user message with chatbot (now with user context)
-    const result = await chatbotService.processUserMessage(
-      message,
-      conversationHistory || [],
-      undefined // Pass undefined for user ID since we don't have auth yet
-    );
+    const history: ChatMessage[] = conversationHistory || [];
 
-    // If chatbot is ready to provide recommendations, get them
-    let recommendations = null;
+    console.log(" Calling chatbot service...");
+    const result = await chatbotService.processUserMessage(message, history);
+    
+    console.log(" Chatbot response generated successfully");
+    console.log(" Is complete:", result.isComplete);
+
+    let places: unknown[] = [];
     if (result.isComplete && result.preferences) {
       try {
-        recommendations = await chatbotService.getRecommendationsFromPreferences(
-          result.preferences,
-          undefined, // Pass undefined for user ID since we don't have auth yet
-          userProfile // Pass user profile for enhanced personalization (will be null for now)
+        console.log(" Getting recommendations from preferences...");
+        const recommendations = await chatbotService.getRecommendationsFromPreferences(
+          result.preferences
         );
+        places = recommendations || [];
+        console.log(" Places found:", places.length);
       } catch (error) {
-        console.error('Error getting recommendations:', error);
-        // Don't fail the request, just return without recommendations
+        console.error("Error getting recommendations:", error);
       }
     }
 
@@ -50,27 +46,19 @@ export async function POST(request: NextRequest) {
       response: result.response,
       isComplete: result.isComplete,
       preferences: result.preferences,
-      recommendations: recommendations
+      places: places
     });
 
   } catch (error) {
-    console.error('Chatbot API error:', error);
+    console.error(" Error in chatbot API:", error);
+    
     return NextResponse.json(
-      { error: 'Failed to process chatbot request' },
+      { 
+        success: false, 
+        error: "Failed to process message",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    message: 'Chatbot API endpoint. Use POST to send messages.',
-    usage: {
-      method: 'POST',
-      body: {
-        message: 'string - Your message to the chatbot',
-        conversationHistory: 'ChatMessage[] - Optional conversation history'
-      }
-    }
-  });
 }
