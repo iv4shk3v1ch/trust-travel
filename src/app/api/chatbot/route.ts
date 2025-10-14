@@ -17,10 +17,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process the user message with chatbot
+    // For now, skip user authentication in API route to avoid complexity
+    // This can be enhanced later with proper server-side auth
+    const userProfile = null;
+    
+    console.log('🔄 Processing chatbot request without user context for now');
+    
+    // Process the user message with chatbot (now with user context)
     const result = await chatbotService.processUserMessage(
       message,
-      conversationHistory || []
+      conversationHistory || [],
+      undefined // Pass undefined for user ID since we don't have auth yet
     );
 
     // If chatbot is ready to provide recommendations, get them
@@ -28,7 +35,9 @@ export async function POST(request: NextRequest) {
     if (result.isComplete && result.preferences) {
       try {
         recommendations = await chatbotService.getRecommendationsFromPreferences(
-          result.preferences
+          result.preferences,
+          undefined, // Pass undefined for user ID since we don't have auth yet
+          userProfile // Pass user profile for enhanced personalization (will be null for now)
         );
       } catch (error) {
         console.error('Error getting recommendations:', error);

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/shared/components/Button';
 import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
 import { RecommendedPlace } from '@/core/services/recommender';
+import { InteractiveMap } from './InteractiveMap';
 
 interface ChatbotInterfaceProps {
   onClose?: () => void;
@@ -23,6 +24,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   const [isComplete, setIsComplete] = useState(false);
   const [recommendations, setRecommendations] = useState<RecommendedPlace[]>([]);
   const [preferences, setPreferences] = useState<ChatbotPreferences | null>(null);
+  const [showMobileMap, setShowMobileMap] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -117,208 +120,275 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     setIsComplete(false);
     setRecommendations([]);
     setPreferences(null);
+    setShowMobileMap(false);
     inputRef.current?.focus();
   };
 
-  return (
-    <div className="flex h-full max-w-6xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-lg">
-      {/* Chat Section - Always visible */}
-      <div className="flex flex-col w-full lg:w-1/2 border-r border-gray-200 dark:border-gray-700">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-lg">🤖</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Travel Assistant</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isComplete ? 'Recommendations ready!' : 'Ask me anything about Trento'}
-              </p>
-            </div>
-          </div>
-          {onClose && (
+  // Toggle mobile map
+  const toggleMobileMap = () => {
+    setShowMobileMap(!showMobileMap);
+  };
+
+  // Toggle fullscreen map
+  const toggleFullscreenMap = () => {
+    setIsMapFullscreen(!isMapFullscreen);
+  };
+
+  // Mobile Map Modal Component
+  const MobileMapModal = () => {
+    if (!showMobileMap || !isComplete || recommendations.length === 0) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg w-full h-full max-w-4xl max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              <span className="mr-2">🗺️</span>
+              Places Map ({recommendations.length} found)
+            </h3>
             <Button
+              onClick={toggleMobileMap}
               variant="outline"
-              onClick={onClose}
               className="text-gray-500 hover:text-gray-700"
             >
               ✕
             </Button>
+          </div>
+          <div className="flex-1">
+            <InteractiveMap 
+              recommendations={recommendations} 
+              className="h-full w-full"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Fullscreen Map Modal Component
+  const FullscreenMapModal = () => {
+    if (!isMapFullscreen) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-900">
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              <span className="mr-2">🗺️</span>
+              Fullscreen Map - {recommendations.length} Places
+            </h3>
+            <Button
+              onClick={toggleFullscreenMap}
+              variant="outline"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Exit Fullscreen
+            </Button>
+          </div>
+          <div className="flex-1">
+            <InteractiveMap 
+              recommendations={recommendations} 
+              className="h-full w-full"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="flex h-full bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+        {/* Left Side - Chat (50% on desktop, full width on mobile) */}
+        <div className="w-full lg:w-1/2 flex flex-col">
+          {/* Chat Header */}
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+            <div className="flex items-center space-x-3">
+              <div>
+                <h3 className="font-semibold">AI-Powered Recommendations</h3>
+                <p className="text-sm text-white/80">
+                  {isComplete ? 'Ready to explore!' : 'Discover amazing places in Trento'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Mobile Map Button - Only show on mobile when we have recommendations */}
+              {isComplete && recommendations.length > 0 && (
+                <Button
+                  onClick={toggleMobileMap}
+                  className="lg:hidden bg-white/20 border-white/30 hover:bg-white/30 text-white px-3 py-2 text-sm"
+                >
+                  <span className="flex items-center space-x-1">
+                    <span>�️</span>
+                    <span>Map</span>
+                  </span>
+                </Button>
+              )}
+              {onClose && (
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  className="text-white border-white/30 hover:bg-white/10"
+                >
+                  ✕
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800/50">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl shadow-sm ${
+                  message.role === 'user'
+                    ? 'bg-indigo-500 text-white ml-12'
+                    : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white mr-12 border border-gray-200 dark:border-gray-600'
+                }`}
+              >
+                <p className="text-sm leading-relaxed">{message.content}</p>
+                <p className={`text-xs mt-2 ${
+                  message.role === 'user' ? 'text-indigo-100' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white dark:bg-gray-700 px-4 py-3 rounded-2xl mr-12 border border-gray-200 dark:border-gray-600 shadow-sm">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          {!isComplete && (
+            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex space-x-3">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Try: 'I want cozy restaurants with local cuisine' or 'Show me hiking trails with scenic views'"
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white transition-all duration-200"
+                  disabled={isLoading}
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-50 transition-all duration-200 flex items-center space-x-2"
+                >
+                  <span>Send</span>
+                  <span>→</span>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Chat complete actions */}
+          {isComplete && (
+            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                onClick={restartChat}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 py-3 transition-all duration-200"
+              >
+                <span className="flex items-center justify-center space-x-2">
+                  <span>�</span>
+                  <span>New Search</span>
+                </span>
+              </Button>
+            </div>
           )}
         </div>
 
-        {/* Chat Messages - Fixed height, always scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[400px]">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                message.role === 'user'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-              }`}
-            >
-              <p className="text-sm">{message.content}</p>
-              <p className="text-xs mt-1 opacity-70">
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          </div>
-        ))}
-        
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+        {/* Right Side - Map or Welcome Screen */}
+        <div className="hidden lg:flex lg:w-1/2 flex-col border-l border-gray-200 dark:border-gray-700">
+          {isComplete && recommendations.length > 0 ? (
+            <>
+              {/* Enhanced Dark Theme Map Header */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg">
+                <div>
+                  <h3 className="text-lg font-semibold flex items-center">
+                    <span className="mr-2">🗺️</span>
+                    Locations Map
+                  </h3>
+                  <p className="text-sm text-gray-300">
+                    {recommendations.length} places found • Click markers for details
+                  </p>
+                </div>
+                <Button
+                  onClick={toggleFullscreenMap}
+                  className="bg-gray-700 border-gray-600 hover:bg-gray-600 text-gray-200 px-3 py-2 text-sm transition-all duration-200"
+                >
+                  <span className="flex items-center space-x-1">
+                    <span>⛶</span>
+                    <span>Fullscreen</span>
+                  </span>
+                </Button>
+              </div>
+              
+              {/* Map Container */}
+              <div className="flex-1 relative">
+                <div className="absolute inset-0 bg-gray-900 rounded-b-lg overflow-hidden">
+                  <InteractiveMap 
+                    recommendations={recommendations} 
+                    className="h-full w-full"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Welcome Screen - Shows before recommendations */
+            <div className="flex flex-col h-full">
+              {/* Welcome Header */}
+              <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <span className="mr-2">🗺️</span>
+                  Interactive Map
+                </h3>
+                <p className="text-sm text-white/80">
+                  Places will appear here as you chat
+                </p>
+              </div>
+              
+              {/* Welcome Content */}
+              <div className="flex-1 flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-800">
+                <div className="text-center max-w-md">
+                  <div className="text-6xl mb-6">�</div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Map Ready
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Start describing what you&apos;re looking for and recommended places will appear here with precise locations.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
         </div>
-
-        {/* Input Area */}
-        {!isComplete && (
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex space-x-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Tell me what you're looking for..."
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
-                disabled={isLoading}
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={!inputMessage.trim() || isLoading}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                Send
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Chat complete actions */}
-        {isComplete && (
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              onClick={restartChat}
-              className="w-full bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              New Search
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Recommendations Panel - Shows when complete */}
-      {isComplete && (
-        <div className="w-full lg:w-1/2 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-              <span className="mr-2">🎯</span>
-              Your Perfect Matches
-            </h3>
-            {preferences && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Based on: {preferences.summary}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            {recommendations.length > 0 ? (
-              <div className="space-y-4">
-                {recommendations.map((place) => {
-                  // Calculate match score based on matching tags and rating
-                  const matchScore = Math.min(95, 60 + (place.matching_tags.length * 8) + (place.average_rating * 3));
-                  
-                  return (
-                    <div
-                      key={place.id}
-                      className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
-                            {place.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {place.category.replace('-', ' ')} • {place.city}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end ml-4">
-                          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            matchScore >= 85 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                            matchScore >= 70 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                          }`}>
-                            {matchScore}% match
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <span className="text-yellow-400 mr-1">⭐</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {place.average_rating.toFixed(1)} ({place.review_count})
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {place.description && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">
-                          {place.description.length > 120 ? 
-                            `${place.description.substring(0, 120)}...` : 
-                            place.description
-                          }
-                        </p>
-                      )}
-                      
-                      {place.matching_tags.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            Why it matches:
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {place.matching_tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full font-medium"
-                              >
-                                ✓ {tag.replace('-', ' ')}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-4">🔍</div>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  No specific matches found for your request.
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500">
-                  Try describing what you&apos;re looking for differently.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Mobile Map Modal */}
+      <MobileMapModal />
+
+      {/* Fullscreen Map Modal */}
+      <FullscreenMapModal />
+    </>
   );
 };

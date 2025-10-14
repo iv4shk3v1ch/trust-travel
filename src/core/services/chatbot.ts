@@ -3,15 +3,100 @@ import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
 import { getRecommendations } from './recommender';
 import { type ExperienceTag } from '@/shared/utils/dataStandards';
 
+// Define the profile structure based on the database
+interface DatabaseProfile {
+  id: string;
+  full_name?: string;
+  age?: number;
+  gender?: string;
+  activities?: string[];
+  personality_traits?: string[];
+  trip_style?: string;
+  budget_level?: string;
+  food_restrictions?: string[];
+  spending_style?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export class ChatbotService {
   private systemMessage = {
     role: 'system' as const,
     content: TRAVEL_CHATBOT_SYSTEM_PROMPT
   };
 
+  /**
+   * Enhance chatbot preferences with user profile data
+   */
+  private enhancePreferencesWithProfile(
+    chatPreferences: ChatbotPreferences, 
+    userProfile: DatabaseProfile | null
+  ): ChatbotPreferences {
+    if (!userProfile) {
+      return chatPreferences;
+    }
+
+    const enhanced = { ...chatPreferences };
+
+    // Add user's dietary restrictions and food preferences
+    if (userProfile.food_restrictions?.length) {
+      console.log('🍽️ Adding dietary restrictions:', userProfile.food_restrictions);
+      // Add food-related tags based on restrictions
+      const foodTags = userProfile.food_restrictions
+        .map((restriction: string) => restriction.toLowerCase().replace(' ', '-')) as ExperienceTag[];
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, ...foodTags])];
+    }
+
+    // Add personality-based preferences
+    if (userProfile.personality_traits?.length) {
+      console.log('🎭 Adding personality traits:', userProfile.personality_traits);
+      const personalityTags = userProfile.personality_traits
+        .map((trait: string) => trait.toLowerCase().replace(' ', '-')) as ExperienceTag[];
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, ...personalityTags])];
+    }
+
+    // Add budget preferences (could influence place selection)
+    if (userProfile.budget_level) {
+      console.log('💰 Adding budget preference:', userProfile.budget_level);
+      const budgetTag = userProfile.budget_level.toLowerCase().replace(' ', '-') as ExperienceTag;
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, budgetTag])];
+    }
+
+    // Add spending style preferences
+    if (userProfile.spending_style) {
+      console.log('💸 Adding spending style:', userProfile.spending_style);
+      const spendingTag = userProfile.spending_style.toLowerCase().replace(' ', '-') as ExperienceTag;
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, spendingTag])];
+    }
+
+    // Add activity preferences
+    if (userProfile.activities?.length) {
+      console.log('🎯 Adding activity preferences:', userProfile.activities);
+      const activityTags = userProfile.activities
+        .map((activity: string) => activity.toLowerCase().replace(' ', '-')) as ExperienceTag[];
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, ...activityTags])];
+    }
+
+    // Add trip style preferences
+    if (userProfile.trip_style) {
+      console.log('🗺️ Adding trip style:', userProfile.trip_style);
+      const tripStyleTag = userProfile.trip_style.toLowerCase().replace(' ', '-') as ExperienceTag;
+      enhanced.experienceTags = [...new Set([...enhanced.experienceTags, tripStyleTag])];
+    }
+
+    console.log('✨ Enhanced preferences with profile data:', {
+      original: chatPreferences.experienceTags.length,
+      enhanced: enhanced.experienceTags.length,
+      newTags: enhanced.experienceTags
+    });
+
+    return enhanced;
+  }
+
   async processUserMessage(
     userMessage: string,
-    conversationHistory: ChatMessage[] = []
+    conversationHistory: ChatMessage[] = [],
+    userId?: string
   ): Promise<{
     response: string;
     isComplete: boolean;
@@ -24,6 +109,7 @@ export class ChatbotService {
       
       if (shouldForceRecommendations) {
         console.log('🔄 Forcing recommendations after conversation exchange');
+        console.log('👤 User ID for personalization:', userId || 'anonymous');
         const fallbackPrefs = this.createFallbackPreferences(userMessage);
         console.log('🎯 Forced preferences:', fallbackPrefs);
         return {
@@ -100,13 +186,27 @@ export class ChatbotService {
 
   async getRecommendationsFromPreferences(
     preferences: ChatbotPreferences,
-    userId?: string
+    userId?: string,
+    userProfile?: DatabaseProfile | null
   ) {
     try {
+      console.log('🎯 Getting recommendations with user personalization...');
+      
+      // Enhance preferences with user profile data if available
+      let enhancedPreferences = preferences;
+      if (userProfile) {
+        console.log('✅ User profile provided, enhancing preferences');
+        enhancedPreferences = this.enhancePreferencesWithProfile(preferences, userProfile);
+      } else if (userId) {
+        console.log('⚠️ User ID provided but no profile data, using chat preferences only');
+      } else {
+        console.log('🔒 No user context provided, using chat preferences only');
+      }
+
       // Convert chatbot preferences to travel plan format for recommender
       const travelPlan = {
         destination: {
-          area: preferences.destination,
+          area: enhancedPreferences.destination,
           region: 'trento'
         },
         dates: {
@@ -114,22 +214,31 @@ export class ChatbotService {
           isFlexible: true
         },
         travelType: 'solo' as const, // Default, could be enhanced later
-        experienceTags: preferences.experienceTags as ExperienceTag[],
+        experienceTags: enhancedPreferences.experienceTags as ExperienceTag[],
         specialNeeds: [],
         completedSteps: [1, 2, 3, 4, 5, 6],
         isComplete: true
       };
 
-      // Get recommendations using existing recommender system
+      console.log('🚀 Calling recommender with enhanced travel plan:', {
+        experienceTags: travelPlan.experienceTags,
+        destination: travelPlan.destination,
+        userId: userId
+      });
+
+      // Get recommendations using existing recommender system with user context
       const recommendations = await getRecommendations(travelPlan, userId);
 
       // Filter by categories if specified
-      if (preferences.categories.length > 0) {
-        return recommendations.filter(place => 
-          preferences.categories.includes(place.category)
+      if (enhancedPreferences.categories.length > 0) {
+        const filtered = recommendations.filter(place => 
+          enhancedPreferences.categories.includes(place.category)
         );
+        console.log(`🎯 Filtered recommendations: ${filtered.length}/${recommendations.length} places`);
+        return filtered;
       }
 
+      console.log(`✨ Returning ${recommendations.length} personalized recommendations`);
       return recommendations;
     } catch (error) {
       console.error('Error getting recommendations from preferences:', error);

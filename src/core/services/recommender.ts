@@ -15,6 +15,10 @@ export interface RecommendedPlace {
   phone?: string;
   working_hours?: string;
   
+  // Location coordinates (optional for map display)
+  latitude?: number | null;
+  longitude?: number | null;
+  
   // Aggregated review data
   average_rating: number;
   review_count: number;
@@ -371,6 +375,16 @@ function processPlaceForRecommendation(placeData: any, preferredTags: string[], 
       noveltyScore
     );
     
+    // Debug logging for coordinates
+    if (place.name === 'Pizzeria Korallo') {
+      console.log(`🍕 Debug: ${place.name} coordinates from DB:`, {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        latType: typeof place.latitude,
+        lngType: typeof place.longitude
+      });
+    }
+    
     return {
       id: place.id,
       name: place.name,
@@ -382,6 +396,11 @@ function processPlaceForRecommendation(placeData: any, preferredTags: string[], 
       website: place.website,
       phone: place.phone,
       working_hours: place.working_hours,
+      
+      // Include coordinates from database (they come as strings and need to be converted)
+      latitude: place.latitude || null,
+      longitude: place.longitude || null,
+      
       average_rating: Math.round(averageRating * 10) / 10,
       review_count: reviews.length,
       matching_tags: matchingTags as ExperienceTag[],
