@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AddPlaceForm from '@/features/places/components/AddPlaceForm';
+import { AddPlaceForm } from '@/features/places/components/AddPlaceForm';
 import { Button } from '@/shared/components/Button';
 
 export default function AddPlacePage() {

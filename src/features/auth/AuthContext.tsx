@@ -6,16 +6,13 @@ import type { User, Session } from '@supabase/supabase-js'
 
 interface DatabaseProfile {
   id: string
-  full_name: string
-  age: string
-  gender: string
-  budget_level: 'low' | 'medium' | 'high'
-  activities: string[]
-  place_types: string[]
-  food_preferences: string[]
-  food_restrictions: string[]
-  personality_traits: string[]
-  trip_style: string
+  full_name: string | null
+  age: number | null
+  gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null
+  budget: 'low' | 'medium' | 'high'
+  env_preference: 'city' | 'nature' | 'balanced' | null
+  activity_style: 'active' | 'relaxing' | 'balanced' | null
+  food_restrictions: string | null
   updated_at: string
 }
 
@@ -100,7 +97,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (createError) {
         console.error('Error creating profile:', createError)
-        setError('Failed to create profile. Please try again.')
+        
+        // If creation failed, try with just basic fields
+        console.log('Retrying with minimal profile data')
+        const minimalProfile = { 
+          id: userId, 
+          full_name: fullName,
+          age: '',
+          gender: '',
+          budget_level: 'medium',
+          activities: [],
+          place_types: [],
+          food_preferences: [],
+          food_restrictions: [],
+          personality_traits: [],
+          trip_style: ''
+        }
+        
+        const { data: retryProfile, error: retryError } = await supabase
+          .from('profiles')
+          .insert(minimalProfile)
+          .select()
+          .single()
+
+        if (retryError) {
+          console.error('Failed to create even minimal profile:', retryError)
+          setError('Failed to create profile')
+        } else {
+          console.log('Minimal profile created successfully:', retryProfile)
+          setProfile(retryProfile)
+        }
         return
       }
 
@@ -299,12 +325,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase
+      // Try update first
+      let { data, error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', user.id)
         .select()
         .single()
+
+      // If update failed because profile doesn't exist, try insert (upsert)
+      if (error && (error.code === 'PGRST116' || error.message?.includes('no rows returned'))) {
+        console.log('Profile not found during update, creating new profile')
+        const profileData = {
+          id: user.id,
+          full_name: updates.full_name || user.email?.split('@')[0] || 'User',
+          age: updates.age ?? null,
+          gender: updates.gender || null,
+          budget: updates.budget || 'medium',
+          env_preference: updates.env_preference || null,
+          activity_style: updates.activity_style || null,
+          food_restrictions: updates.food_restrictions || null
+        }
+
+        const result = await supabase
+          .from('profiles')
+          .insert(profileData)
+          .select()
+          .single()
+
+        data = result.data
+        error = result.error
+      }
 
       if (error) throw error
 
@@ -326,14 +377,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Check if user has completed onboarding
+  // Check if user has completed onboarding (simplified for new schema)
   const hasCompletedOnboarding = (): boolean => {
     return !!(profile && 
            profile.full_name && 
            profile.age && 
            profile.gender &&
-           profile.activities && 
-           profile.activities.length > 0)
+           profile.budget)
   }
 
   const value: AuthContextType = {

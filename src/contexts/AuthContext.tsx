@@ -6,16 +6,13 @@ import type { User, Session } from '@supabase/supabase-js'
 
 interface DatabaseProfile {
   id: string
-  full_name: string
-  age: string
-  gender: string
-  budget_level: 'low' | 'medium' | 'high'
-  activities: string[]
-  place_types: string[]
-  food_preferences: string[]
-  food_restrictions: string[]
-  personality_traits: string[]
-  trip_style: string
+  full_name: string | null
+  age: number | null
+  gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null
+  budget: 'low' | 'medium' | 'high'
+  env_preference: 'city' | 'nature' | 'balanced' | null
+  activity_style: 'active' | 'relaxing' | 'balanced' | null
+  food_restrictions: string | null
   updated_at: string
 }
 
@@ -354,14 +351,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Check if user has completed onboarding
+  // Check if user has completed onboarding (simplified for new schema)
   const hasCompletedOnboarding = (): boolean => {
     return !!(profile && 
            profile.full_name && 
            profile.age && 
            profile.gender &&
-           profile.activities && 
-           profile.activities.length > 0)
+           profile.budget)
   }
 
   const value: AuthContextType = {

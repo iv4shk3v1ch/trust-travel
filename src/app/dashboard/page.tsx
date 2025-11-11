@@ -7,12 +7,14 @@ import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
 import { calculateProfileCompleteness } from '@/core/services/profileScore';
+import { useInteractionTracker } from '@/core/services/interactionTracker';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<DatabaseProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { track } = useInteractionTracker();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -45,6 +47,16 @@ export default function DashboardPage() {
 
     checkUser();
   }, [router]);
+
+  // Track page view
+  useEffect(() => {
+    if (!loading && user) {
+      track('view', undefined, {
+        page: 'dashboard',
+        profile_completeness: profile ? calculateProfileCompleteness(profile).percentage : 0
+      });
+    }
+  }, [loading, user, profile, track]);
 
   if (loading) {
     return (

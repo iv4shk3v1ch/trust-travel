@@ -2,10 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadExistingProfile, DatabaseProfile, saveNewProfile } from '@/core/database/newDatabase';
+import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
 import { supabase } from '@/core/database/supabase';
 import { Button } from '@/shared/components/Button';
-import { calculateProfileCompleteness } from '@/core/services/profileScore';
+
+// Simple completion check for new schema
+function calculateProfileCompleteness(profile: DatabaseProfile): { percentage: number; isComplete: boolean; missingFields: string[] } {
+  const requiredFields: (keyof DatabaseProfile)[] = ['full_name', 'age', 'gender', 'budget', 'env_preference', 'activity_style'];
+  const missingFields: string[] = [];
+  
+  requiredFields.forEach(field => {
+    if (!profile[field]) {
+      missingFields.push(field);
+    }
+  });
+  
+  const filledCount = requiredFields.length - missingFields.length;
+  const percentage = Math.round((filledCount / requiredFields.length) * 100);
+  
+  return {
+    percentage,
+    isComplete: missingFields.length === 0,
+    missingFields
+  };
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -21,7 +41,6 @@ export default function ProfilePage() {
       }
 
       try {
-        // Load profile using new database function
         const profile = await loadExistingProfile();
         setCurrentProfile(profile);
       } catch (error) {
@@ -33,37 +52,6 @@ export default function ProfilePage() {
 
     loadUserData();
   }, [router]);
-
-  const clearField = async (fieldName: keyof DatabaseProfile) => {
-    if (!currentProfile) return;
-    
-    try {
-      // Create updated profile with cleared field
-      const updatedProfile = { ...currentProfile };
-      
-      // Clear array fields (these can be emptied)
-      if (fieldName === 'personality_traits') {
-        updatedProfile.personality_traits = [];
-      } else if (fieldName === 'activities') {
-        updatedProfile.activities = [];
-      } else if (fieldName === 'food_preferences') {
-        updatedProfile.food_preferences = [];
-      } else if (fieldName === 'food_restrictions') {
-        updatedProfile.food_restrictions = [];
-      } else if (fieldName === 'place_types') {
-        updatedProfile.place_types = [];
-      }
-      // Note: budget_level and trip_style are required fields and cannot be cleared
-      
-      // Save to database
-      await saveNewProfile(updatedProfile);
-      
-      // Update local state
-      setCurrentProfile(updatedProfile);
-    } catch (error) {
-      console.error('Error clearing field:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -85,7 +73,7 @@ export default function ProfilePage() {
               Welcome to Trust Travel!
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mb-8">
-              Complete your profile to start connecting with fellow travelers and planning amazing trips.
+              Complete your profile to start getting personalized travel recommendations.
             </p>
             <Button onClick={() => router.push('/profile/edit')}>
               Create Your Profile
@@ -138,7 +126,7 @@ export default function ProfilePage() {
               <p className="text-gray-600 dark:text-gray-400">
                 {completionStats.isComplete 
                   ? 'Your profile is complete!' 
-                  : `${completionStats.missingFields.length} sections remaining`
+                  : `${completionStats.missingFields.length} fields remaining`
                 }
               </p>
             </div>
@@ -176,167 +164,48 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Gender</label>
-                <p className="text-gray-900 dark:text-white">{currentProfile.gender || 'Not specified'}</p>
+                <p className="text-gray-900 dark:text-white capitalize">
+                  {currentProfile.gender?.replace(/-/g, ' ') || 'Not specified'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Travel Style */}
+          {/* Travel Preferences */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Travel Style
+              Travel Preferences
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Budget Level</label>
-                <p className="text-gray-900 dark:text-white">
-                  {currentProfile.budget_level ? 
-                    currentProfile.budget_level.charAt(0).toUpperCase() + currentProfile.budget_level.slice(1) 
-                    : 'Not specified'
-                  }
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Budget</label>
+                <p className="text-gray-900 dark:text-white capitalize">
+                  {currentProfile.budget || 'Not specified'}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Trip Style</label>
-                <p className="text-gray-900 dark:text-white">
-                  {currentProfile.trip_style ? 
-                    currentProfile.trip_style.charAt(0).toUpperCase() + currentProfile.trip_style.slice(1) 
-                    : 'Not specified'
-                  }
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Environment Preference</label>
+                <p className="text-gray-900 dark:text-white capitalize">
+                  {currentProfile.env_preference || 'Not specified'}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Activity Style</label>
+                <p className="text-gray-900 dark:text-white capitalize">
+                  {currentProfile.activity_style || 'Not specified'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Personality Traits */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Personality Traits
-              </h3>
-              {currentProfile.personality_traits && currentProfile.personality_traits.length > 0 && (
-                <button
-                  onClick={() => clearField('personality_traits')}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all duration-200"
-                  title="Clear all personality traits"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {currentProfile.personality_traits && currentProfile.personality_traits.length > 0 ? (
-                currentProfile.personality_traits.map((trait, index) => (
-                  <span 
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
-                  >
-                    {trait}
-                  </span>
-                ))
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">No traits specified</p>
-              )}
-            </div>
-          </div>
-
-          {/* Activities */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Preferred Activities
-              </h3>
-              {currentProfile.activities && currentProfile.activities.length > 0 && (
-                <button
-                  onClick={() => clearField('activities')}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all duration-200"
-                  title="Clear all activities"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {currentProfile.activities && currentProfile.activities.length > 0 ? (
-                currentProfile.activities.map((activity, index) => (
-                  <span 
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  >
-                    {activity}
-                  </span>
-                ))
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">No activities specified</p>
-              )}
-            </div>
-          </div>
-
-          {/* Food Preferences */}
+          {/* Food Restrictions */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 md:col-span-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Food Preferences & Restrictions
+              Dietary Restrictions
             </h3>
-            
-            {/* Food Preferences */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-medium text-gray-700 dark:text-gray-300">Preferences</h4>
-                {currentProfile.food_preferences && currentProfile.food_preferences.length > 0 && (
-                  <button
-                    onClick={() => clearField('food_preferences')}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all duration-200"
-                    title="Clear all food preferences"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {currentProfile.food_preferences && currentProfile.food_preferences.length > 0 ? (
-                  currentProfile.food_preferences.map((pref, index) => (
-                    <span 
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                    >
-                      {pref}
-                    </span>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400">No preferences specified</p>
-                )}
-              </div>
-            </div>
-
-            {/* Food Restrictions */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-medium text-gray-700 dark:text-gray-300">Restrictions</h4>
-                {currentProfile.food_restrictions && currentProfile.food_restrictions.length > 0 && (
-                  <button
-                    onClick={() => clearField('food_restrictions')}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-all duration-200"
-                    title="Clear all food restrictions"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {currentProfile.food_restrictions && currentProfile.food_restrictions.length > 0 ? (
-                  currentProfile.food_restrictions.map((restriction, index) => (
-                    <span 
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                    >
-                      {restriction}
-                    </span>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400">No restrictions specified</p>
-                )}
-              </div>
-            </div>
+            <p className="text-gray-900 dark:text-white">
+              {currentProfile.food_restrictions || 'No restrictions specified'}
+            </p>
           </div>
 
         </div>

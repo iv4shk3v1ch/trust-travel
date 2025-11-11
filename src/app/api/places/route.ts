@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveNewPlace, type AddPlaceFormData } from '@/core/database/placesDatabase';
+import { saveNewPlace } from '@/core/database/placesDatabase';
+import type { PlaceFormData } from '@/shared/types/place';
 
 export async function POST(request: NextRequest) {
   try {
-    const formData: AddPlaceFormData = await request.json();
+    const formData: PlaceFormData = await request.json();
     
     // Basic validation
     if (!formData.name?.trim()) {
@@ -13,16 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!formData.city?.trim()) {
+    if (!formData.place_type_id) {
       return NextResponse.json(
-        { error: 'City is required' },
-        { status: 400 }
-      );
-    }
-    
-    if (!formData.category) {
-      return NextResponse.json(
-        { error: 'Category is required' },
+        { error: 'Place type is required' },
         { status: 400 }
       );
     }

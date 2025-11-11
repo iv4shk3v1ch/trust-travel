@@ -1,17 +1,15 @@
 import { supabase } from './supabase';
 
+// Updated to match simplified database schema
 export interface DatabaseProfile {
   id: string;
-  full_name: string;
-  age: number;
-  gender: 'male' | 'female';
-  budget_level: 'low' | 'medium' | 'high';
-  activities: string[];
-  place_types: string[];
-  food_preferences: string[];
-  food_restrictions: string[];
-  personality_traits: string[];
-  trip_style: 'planned' | 'mixed' | 'spontaneous';
+  full_name: string | null;
+  age: number | null;
+  gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
+  budget: 'low' | 'medium' | 'high';
+  env_preference: 'city' | 'nature' | 'balanced' | null;
+  activity_style: 'active' | 'relaxing' | 'balanced' | null;
+  food_restrictions: string | null;
   updated_at?: string;
 }
 
@@ -41,25 +39,22 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
     console.log('📋 Existing profiles structure:', JSON.stringify(existingProfiles, null, 2));
   }
 
-  // Simple validation - only male/female allowed
+  // Validate gender if provided
   console.log(`👤 Selected gender: "${profileData.gender}"`);
-  if (!['male', 'female'].includes(profileData.gender)) {
-    throw new Error(`Invalid gender: ${profileData.gender}. Only 'male' or 'female' are allowed.`);
+  if (profileData.gender && !['male', 'female', 'non-binary', 'prefer-not-to-say'].includes(profileData.gender)) {
+    throw new Error(`Invalid gender: ${profileData.gender}. Allowed values: male, female, non-binary, prefer-not-to-say`);
   }
 
-  // Use the selected gender directly
+  // Save only the fields that exist in the simplified schema
   const profileToSave = {
     id: user.id,
     full_name: profileData.full_name,
     age: profileData.age,
-    gender: profileData.gender, // Only male/female allowed now
-    budget_level: profileData.budget_level,
-    activities: profileData.activities,
-    place_types: profileData.place_types,
-    food_preferences: profileData.food_preferences,
-    food_restrictions: profileData.food_restrictions,
-    personality_traits: profileData.personality_traits,
-    trip_style: profileData.trip_style
+    gender: profileData.gender,
+    budget: profileData.budget,
+    env_preference: profileData.env_preference,
+    activity_style: profileData.activity_style,
+    food_restrictions: profileData.food_restrictions
   };
 
   console.log('📤 Profile to save:', JSON.stringify(profileToSave, null, 2));
@@ -105,13 +100,10 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
       console.log('  full_name:', verifyData?.full_name);
       console.log('  age:', verifyData?.age);
       console.log('  gender:', verifyData?.gender);
-      console.log('  budget_level:', verifyData?.budget_level);
-      console.log('  activities:', verifyData?.activities);
-      console.log('  place_types:', verifyData?.place_types);
-      console.log('  food_preferences:', verifyData?.food_preferences);
+      console.log('  budget:', verifyData?.budget);
+      console.log('  env_preference:', verifyData?.env_preference);
+      console.log('  activity_style:', verifyData?.activity_style);
       console.log('  food_restrictions:', verifyData?.food_restrictions);
-      console.log('  personality_traits:', verifyData?.personality_traits);
-      console.log('  trip_style:', verifyData?.trip_style);
     }
 
   } catch (error) {

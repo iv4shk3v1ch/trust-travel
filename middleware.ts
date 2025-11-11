@@ -60,19 +60,24 @@ export async function middleware(request: NextRequest) {
     }
 
     // For other protected routes, check if user has completed onboarding
-    const { data: profile } = await supabase
-      .from('user_profiles')
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
 
     // If no profile exists or incomplete, redirect to onboarding
-    if (!profile || 
-        !profile.full_name || 
-        !profile.age || 
-        !profile.gender ||
-        !profile.activities || 
-        profile.activities.length === 0) {
+    // Handle the case where profile doesn't exist (error or null data)
+    const profileMissing = profileError || !profile
+    const profileIncomplete = profile && (
+      !profile.full_name || 
+      !profile.age || 
+      !profile.gender ||
+      !profile.activities || 
+      profile.activities.length === 0
+    )
+    
+    if (profileMissing || profileIncomplete) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
     }
   }

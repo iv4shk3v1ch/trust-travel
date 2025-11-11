@@ -1,86 +1,61 @@
+// Updated to match new simplified database schema
 export interface Review {
   id: string;
-  userId: string;
-  placeName: string;
-  rating: number; // 1-5 stars
-  visitDate: string; // ISO date string
-  tags: string[];
-  reviewText?: string;
-  photos?: string[]; // URLs to uploaded photos
-  createdAt: string;
-  updatedAt: string;
+  user_id: string;
+  place_id: string;
+  price_range: string | null; // '0-10', '10-20', '20-35', '35-50', '50-75', '75-100', '100+'
+  comment: string | null;
+  visit_date: string; // date (YYYY-MM-DD)
+  overall_rating: number | null; // 0-5, decimal(2,1)
+  created_at: string;
+  updated_at: string;
+  review_embedding?: number[]; // vector field (optional when reading)
+  embedding_model?: string | null;
+  embedding_updated_at?: string | null;
 }
 
-export interface QuickReview {
+export interface ExperienceTag {
   id: string;
-  userId: string;
-  placeId: string;
-  placeName: string;
-  satisfaction: number; // 1-5 emoji scale
-  value: number; // 1-5 emoji scale
-  contextTags: string[];
-  comment?: string;
-  visitDate: string; // ISO date string
-  createdAt: string;
+  name: string;
+  slug: string;
+  category: string; // e.g., 'atmosphere', 'activity', 'food', 'service'
+  icon?: string | null;
+  description?: string | null;
+  created_at: string;
+}
+
+export interface ReviewExperienceTag {
+  review_id: string;
+  experience_tag_id: string;
+  sentiment_score: number; // 0-1, default 0.5
+  created_at: string;
+}
+
+// For displaying reviews with their tags
+export interface ReviewWithTags extends Review {
+  experience_tags?: ExperienceTag[];
+  place?: {
+    name: string;
+    category: string;
+  };
 }
 
 export interface ReviewFormData {
-  placeName: string;
-  rating: number;
-  visitDate: string;
-  tags: string[];
-  reviewText: string;
-  photos: File[];
-}
-
-export interface QuickReviewFormData {
-  placeName: string;
-  satisfaction: number;
-  value: number;
-  contextTags: string[];
+  place_id: string;
+  overall_rating: number;
+  visit_date: string;
+  experience_tag_ids: string[]; // IDs of selected experience tags
+  price_range?: string;
   comment?: string;
-  visitDate: string;
 }
 
-export const CONTEXT_TAGS = [
-  'family-friendly',
-  'romantic',
-  'budget-friendly',
-  'luxury',
-  'outdoor',
-  'historical',
-  'cultural',
-  'food',
-  'shopping',
-  'nature',
-  'relaxing',
-  'scenic',
-  'crowded',
-  'local-favorite'
+// Price range options for food/dining places
+export const PRICE_RANGES = [
+  { value: '0-10', label: '$0-10 per person' },
+  { value: '10-20', label: '$10-20 per person' },
+  { value: '20-35', label: '$20-35 per person' },
+  { value: '35-50', label: '$35-50 per person' },
+  { value: '50-75', label: '$50-75 per person' },
+  { value: '75-100', label: '$75-100 per person' },
+  { value: '100+', label: '$100+ per person' }
 ] as const;
-
-export const REVIEW_TAGS = [
-  'dog-friendly',
-  'vegan',
-  'family-friendly',
-  'romantic',
-  'budget-friendly',
-  'luxury',
-  'outdoor',
-  'historical',
-  'cultural',
-  'nightlife',
-  'food',
-  'shopping',
-  'nature',
-  'adventure',
-  'relaxing',
-  'accessible',
-  'scenic',
-  'crowded',
-  'quiet',
-  'local-favorite'
-] as const;
-
-export type ReviewTag = typeof REVIEW_TAGS[number];
-export type ContextTag = typeof CONTEXT_TAGS[number];

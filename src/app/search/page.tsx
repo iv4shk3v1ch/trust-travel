@@ -6,6 +6,7 @@ import { supabase } from '@/core/database/supabase';
 import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/features/social/connections';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { useInteractionTracker } from '@/core/services/interactionTracker';
 
 interface UserProfile {
   id: string;
@@ -28,6 +29,7 @@ export default function SearchPage() {
   const [suggestedUsers, setSuggestedUsers] = useState<UserProfile[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+  const { track, searchAction } = useInteractionTracker();
 
   useEffect(() => {
     const loadSuggestedUsers = async (userProfile: UserProfile | null) => {
@@ -153,6 +155,13 @@ export default function SearchPage() {
     }
 
     setSearchLoading(true);
+    
+    // Track search action
+    await searchAction(searchQuery, 0, {
+      page: 'user_search',
+      search_type: 'user_connections'
+    });
+    
     try {
       const searchTerm = searchQuery.trim().toLowerCase();
       console.log('Searching for:', searchTerm);
@@ -204,6 +213,14 @@ export default function SearchPage() {
 
       console.log('Filtered users:', filteredUsers.length);
       setSearchResults(filteredUsers);
+      
+      // Track search results
+      await track('search', undefined, {
+        search_query: searchQuery,
+        results_count: filteredUsers.length,
+        page: 'user_search'
+      });
+      
     } catch (error) {
       console.error('Error searching users:', error);
       setSearchResults([]);

@@ -9,12 +9,11 @@ import { useAuth } from '@/features/auth/AuthContext';
 interface OnboardingData {
   fullName: string;
   age: string;
-  gender: string;
-  budgetLevel: 'low' | 'medium' | 'high';
-  activities: string[];
-  placeTypes: string[];
-  foodPreferences: string[];
-  tripStyle: string;
+  gender: '' | 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
+  budget: 'low' | 'medium' | 'high';
+  envPreference: '' | 'city' | 'nature' | 'balanced';
+  activityStyle: '' | 'active' | 'relaxing' | 'balanced';
+  foodRestrictions: string;
 }
 
 export function OnboardingWizard() {
@@ -24,15 +23,42 @@ export function OnboardingWizard() {
     fullName: '',
     age: '',
     gender: '',
-    budgetLevel: 'medium',
-    activities: [],
-    placeTypes: [],
-    foodPreferences: [],
-    tripStyle: ''
+    budget: 'medium',
+    envPreference: '',
+    activityStyle: '',
+    foodRestrictions: ''
   });
   
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, signOut } = useAuth();
   const router = useRouter();
+
+  const handleSkip = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      await updateProfile({
+        full_name: data.fullName || user.email?.split('@')[0] || 'User',
+        age: data.age ? parseInt(data.age) : 25,
+        gender: data.gender || 'prefer-not-to-say',
+        budget: data.budget,
+        env_preference: data.envPreference || null,
+        activity_style: data.activityStyle || null,
+        food_restrictions: data.foodRestrictions || null
+      });
+      
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error skipping onboarding:', error);
+      alert('Error creating profile. You can try logging out and back in.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   const handleNext = () => {
     setStep(step + 1);
@@ -49,13 +75,12 @@ export function OnboardingWizard() {
     try {
       await updateProfile({
         full_name: data.fullName,
-        age: data.age,
-        gender: data.gender,
-        budget_level: data.budgetLevel,
-        activities: data.activities,
-        place_types: data.placeTypes,
-        food_preferences: data.foodPreferences,
-        trip_style: data.tripStyle
+        age: parseInt(data.age),
+        gender: data.gender || 'prefer-not-to-say',
+        budget: data.budget,
+        env_preference: data.envPreference || null,
+        activity_style: data.activityStyle || null,
+        food_restrictions: data.foodRestrictions || null
       });
       
       router.push('/dashboard');
@@ -82,6 +107,7 @@ export function OnboardingWizard() {
             />
             <Input
               label="Age"
+              type="number"
               placeholder="Your age"
               value={data.age}
               onChange={(e) => setData({ ...data, age: e.target.value })}
@@ -93,13 +119,13 @@ export function OnboardingWizard() {
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={data.gender}
-                onChange={(e) => setData({ ...data, gender: e.target.value })}
+                onChange={(e) => setData({ ...data, gender: e.target.value as typeof data.gender })}
               >
                 <option value="">Select gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
               </select>
             </div>
           </div>
@@ -117,20 +143,56 @@ export function OnboardingWizard() {
               </label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                value={data.budgetLevel}
-                onChange={(e) => setData({ ...data, budgetLevel: e.target.value as 'low' | 'medium' | 'high' })}
+                value={data.budget}
+                onChange={(e) => setData({ ...data, budget: e.target.value as 'low' | 'medium' | 'high' })}
               >
                 <option value="low">Budget Traveler</option>
                 <option value="medium">Mid-range</option>
                 <option value="high">Luxury</option>
               </select>
             </div>
-            <Input
-              label="Trip Style"
-              placeholder="e.g., Adventure, Cultural, Relaxation"
-              value={data.tripStyle}
-              onChange={(e) => setData({ ...data, tripStyle: e.target.value })}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Environment Preference
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                value={data.envPreference}
+                onChange={(e) => setData({ ...data, envPreference: e.target.value as typeof data.envPreference })}
+              >
+                <option value="">Select preference (optional)</option>
+                <option value="city">City</option>
+                <option value="nature">Nature</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Activity Style
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                value={data.activityStyle}
+                onChange={(e) => setData({ ...data, activityStyle: e.target.value as typeof data.activityStyle })}
+              >
+                <option value="">Select style (optional)</option>
+                <option value="active">Active</option>
+                <option value="relaxing">Relaxing</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Dietary Restrictions (optional)
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="e.g., Vegetarian, Gluten-free..."
+                value={data.foodRestrictions}
+                onChange={(e) => setData({ ...data, foodRestrictions: e.target.value })}
+                rows={3}
+              />
+            </div>
           </div>
         );
       
@@ -182,14 +244,35 @@ export function OnboardingWizard() {
             ) : (
               <Button
                 onClick={handleComplete}
-                disabled={!data.tripStyle || loading}
+                disabled={loading}
               >
                 {loading ? 'Completing...' : 'Complete Setup'}
               </Button>
             )}
+          </div>
+
+          {/* Emergency Options */}
+          <div className="flex justify-center space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              variant="ghost"
+              onClick={handleSkip}
+              disabled={loading}
+              className="text-sm"
+            >
+              Skip with Defaults
+            </Button>
+            <Button
+              variant="ghost" 
+              onClick={handleLogout}
+              disabled={loading}
+              className="text-sm text-red-600 hover:text-red-700"
+            >
+              Logout & Restart
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
