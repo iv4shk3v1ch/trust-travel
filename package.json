@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:tripadvisor": "tsx scripts/test-tripadvisor-api.ts",
+    "import:tripadvisor": "tsx scripts/import-tripadvisor-places.ts",
+    "add:test-places": "tsx scripts/add-test-places.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
@@ -33,6 +36,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
     "jest": "^30.1.3",
@@ -40,6 +44,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "ts-jest": "^29.4.1",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }

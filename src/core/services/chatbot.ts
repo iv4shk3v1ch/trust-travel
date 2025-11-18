@@ -1,6 +1,6 @@
 import { createGroqChatCompletion, TRAVEL_CHATBOT_SYSTEM_PROMPT } from './groq';
 import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
-import { getRecommendations } from './recommender';
+// REMOVED: import { getRecommendations } from './recommender'; - was only used in dead getRecommendationsFromPreferences method
 import { type ExperienceTag } from '@/shared/utils/dataStandards';
 
 // Define the profile structure based on the database
@@ -170,6 +170,26 @@ export class ChatbotService {
 
     } catch (error) {
       console.error('Chatbot service error:', error);
+      
+      // Try to provide fallback recommendations if the message seems like a request
+      const message = userMessage.toLowerCase();
+      const isPlaceRequest = message.includes('find') || message.includes('show') || 
+                            message.includes('recommend') || message.includes('looking for') ||
+                            message.includes('want') || message.includes('need') ||
+                            message.includes('restaurant') || message.includes('bar') || 
+                            message.includes('cafe') || message.includes('museum') ||
+                            message.includes('hike') || message.includes('place');
+      
+      if (isPlaceRequest) {
+        const fallbackPrefs = this.createFallbackPreferences(userMessage);
+        console.log('🔄 Using fallback preferences due to Groq error:', fallbackPrefs);
+        return {
+          response: "I'm having trouble connecting to my AI service, but I'll try to help you anyway! Let me find some places based on what you asked...",
+          isComplete: true,
+          preferences: fallbackPrefs
+        };
+      }
+      
       return {
         response: "I'm sorry, I'm having trouble right now. Could you try asking again?",
         isComplete: false
@@ -177,81 +197,10 @@ export class ChatbotService {
     }
   }
 
-  async getRecommendationsFromPreferences(
-    preferences: ChatbotPreferences,
-    userId?: string,
-    userProfile?: DatabaseProfile | null
-  ) {
-    try {
-      console.log('🎯 Getting recommendations with user personalization...');
-      
-      // Enhance preferences with user profile data if available
-      let enhancedPreferences = preferences;
-      if (userProfile) {
-        console.log('✅ User profile provided, enhancing preferences');
-        enhancedPreferences = this.enhancePreferencesWithProfile(preferences, userProfile);
-      } else if (userId) {
-        console.log('⚠️ User ID provided but no profile data, using chat preferences only');
-      } else {
-        console.log('🔒 No user context provided, using chat preferences only');
-      }
-
-      console.log('📋 Enhanced preferences:', {
-        categories: enhancedPreferences.categories,
-        experienceTags: enhancedPreferences.experienceTags,
-        destination: enhancedPreferences.destination
-      });
-
-      // Convert chatbot preferences to travel plan format for recommender
-      const travelPlan = {
-        destination: {
-          area: enhancedPreferences.destination,
-          region: 'trento'
-        },
-        dates: {
-          type: 'now' as const,
-          isFlexible: true
-        },
-        travelType: 'solo' as const, // Default, could be enhanced later
-        experienceTags: enhancedPreferences.experienceTags as ExperienceTag[],
-        categories: enhancedPreferences.categories, // Pass specific categories to recommender
-        specialNeeds: [],
-        completedSteps: [1, 2, 3, 4, 5, 6],
-        isComplete: true
-      };
-
-      console.log('🚀 Calling recommender with enhanced travel plan:', {
-        experienceTags: travelPlan.experienceTags,
-        destination: travelPlan.destination,
-        categories: travelPlan.categories,
-        userId: userId
-      });
-
-      // Get recommendations using existing recommender system with user context
-      const recommendations = await getRecommendations(travelPlan, userId);
-
-      // Only filter by categories for specific queries, not general ones
-      const isGeneralQuery = enhancedPreferences.categories.length >= 5 ||
-                            enhancedPreferences.experienceTags.some(tag => 
-                              ['popular', 'highly-rated', 'authentic-local'].includes(tag)
-                            );
-      
-      if (!isGeneralQuery && enhancedPreferences.categories.length > 0 && enhancedPreferences.categories.length <= 3) {
-        // Only filter for specific queries with few categories
-        const filtered = recommendations.filter(place => 
-          enhancedPreferences.categories.includes(place.category)
-        );
-        console.log(`🎯 Specific query - filtered recommendations: ${filtered.length}/${recommendations.length} places`);
-        return filtered;
-      }
-
-      console.log(`✨ General query - returning all ${recommendations.length} diverse recommendations`);
-      return recommendations;
-    } catch (error) {
-      console.error('Error getting recommendations from preferences:', error);
-      throw error;
-    }
-  }
+  // DELETED: getRecommendationsFromPreferences() method - DEAD CODE (85 lines)
+  // This method was never called after we moved recommendation logic to chatbot/route.ts
+  // It was using the old recommender.ts instead of the new recommendationEngine.ts
+  // If needed in future, use getIntentBasedRecommendations from recommendationEngine.ts instead
 
   private createFallbackPreferences(userMessage: string): ChatbotPreferences {
     // Enhanced fallback logic based on keywords in user message
@@ -299,49 +248,48 @@ export class ChatbotService {
     
     if (isRestaurantQuery) {
       categories.push('restaurant');
-      experienceTags.push('highly-rated', 'authentic-local');
+      experienceTags.push('great-food', 'authentic-local');
       console.log('🍽️ Detected restaurant query - using restaurant category only');
-    } else if (isGeneralQuery) {
     } else if (isGeneralQuery) {
       // For general queries, include diverse categories to show variety
       categories.push(
-        'restaurant', 'museum', 'historical-site', 'park', 'viewpoint', 
-        'coffee-shop', 'bar', 'attraction', 'adventure-activity'
+        'restaurant', 'museum', 'historical-landmark', 'park', 'viewpoint', 
+        'cafe', 'aperetivo-bar'
       );
-      experienceTags.push('popular', 'highly-rated', 'authentic-local');
+      experienceTags.push('local-favorite', 'authentic-local');
       console.log('🎯 Detected general query - using diverse categories');
     } else {
       // Enhanced keyword matching for specific categories
       if (isHikingQuery) {
         categories.push('hiking-trail', 'park', 'viewpoint');
-        experienceTags.push('scenic-beauty', 'peaceful');
+        experienceTags.push('scenic-view', 'peaceful');
       }
       else if (isNatureQuery) {
         categories.push('park', 'viewpoint', 'hiking-trail');
-        experienceTags.push('scenic-beauty', 'peaceful');
+        experienceTags.push('scenic-view', 'peaceful');
       }
       else if (isBarQuery) {
-        categories.push('bar');
+        categories.push('aperetivo-bar', 'craft-beer-pub');
         if (message.includes('friend') || message.includes('hangout') || message.includes('social')) {
-          experienceTags.push('friends-group');
+          experienceTags.push('great-for-friends', 'lively');
         }
       }
       else if (isCoffeeQuery) {
-        categories.push('coffee-shop');
+        categories.push('cafe', 'specialty-coffee');
+        experienceTags.push('cozy');
       }
       else if (isMuseumQuery) {
-        categories.push('museum', 'historical-site');
-        experienceTags.push('cultural');
+        categories.push('museum', 'historical-landmark', 'art-gallery');
+        experienceTags.push('artsy', 'peaceful');
       }
       else if (message.includes('adventure') || message.includes('sport') || message.includes('activity')) {
-        categories.push('adventure-activity', 'sports-facility');
-        experienceTags.push('energetic');
+        categories.push('adventure-park', 'hiking-trail');
       }
       else if (message.includes('beach') || message.includes('water') || message.includes('swim')) {
-        categories.push('beach', 'water-activity');
+        categories.push('beach', 'lake');
       }
       else if (message.includes('shop') || message.includes('shopping') || message.includes('buy')) {
-        categories.push('shopping');
+        categories.push('shopping-centre', 'local-market', 'artisanal-shop');
       }
       else {
         // Default for unclear specific queries - still show some variety
@@ -388,6 +336,7 @@ export class ChatbotService {
     });
 
     return {
+      intent: 'goal-oriented', // Fallback always assumes user wants recommendations
       categories: categories,
       experienceTags: experienceTags,
       destination: 'trento-city',
@@ -396,21 +345,9 @@ export class ChatbotService {
     };
   }
 
-  /**
-   * Create preferences specifically for must-see queries - focusing on top-rated, famous places
-   */
-  private createMustSeePreferences(): ChatbotPreferences {
-    return {
-      categories: [
-        'museum', 'historical-site', 'viewpoint', 'attraction', 
-        'restaurant', 'park', 'religious-site', 'theater'
-      ],
-      experienceTags: ['highly-rated', 'popular', 'must-visit', 'famous', 'iconic'],
-      destination: 'trento-city',
-      budget: 'medium',
-      summary: 'Must-see attractions and top-rated places in Trento - the absolute highlights'
-    };
-  }
+  // DELETED: createMustSeePreferences() method - DEAD CODE (13 lines)
+  // This method was never called anywhere in the codebase
+  // If needed in future, the logic is simple enough to recreate
 }
 
 export const chatbotService = new ChatbotService();

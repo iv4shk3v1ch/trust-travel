@@ -5,7 +5,9 @@ export type InteractionType =
   | 'view' | 'save' | 'click' | 'like' | 'dislike' | 'hide' 
   | 'share' | 'navigate' | 'call' | 'website' | 'search' 
   | 'filter' | 'scroll_past' | 'hover' | 'quick_view' 
-  | 'compare' | 'review_start' | 'review_submit';
+  | 'compare' | 'review_start' | 'review_submit' | 'chatbot_query';
+
+export type IntentType = 'goal-oriented' | 'discovery' | 'informational' | null;
 
 export interface InteractionMetadata {
   // Context data
@@ -73,7 +75,8 @@ class InteractionTracker {
   async track(
     actionType: InteractionType,
     placeId?: string,
-    metadata: InteractionMetadata = {}
+    metadata: InteractionMetadata = {},
+    intentType?: IntentType
   ) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -91,7 +94,9 @@ class InteractionTracker {
           timestamp: new Date().toISOString(),
           page_time_ms: this.pageStartTime 
             ? new Date().getTime() - this.pageStartTime.getTime() 
-            : 0
+            : 0,
+          // Store intent in metadata if provided
+          ...(intentType ? { intent_type: intentType } : {})
         }
       };
 
@@ -180,6 +185,19 @@ class InteractionTracker {
       position,
       action_type: 'passive' // Indicates this wasn't an active choice
     });
+  }
+
+  // Chatbot interaction tracking
+  async trackChatbotQuery(
+    query: string, 
+    intentType: IntentType,
+    metadata: InteractionMetadata = {}
+  ) {
+    return this.track('chatbot_query', undefined, {
+      ...metadata,
+      search_query: query,
+      intent_detected: intentType
+    }, intentType);
   }
 
   // Map interaction methods

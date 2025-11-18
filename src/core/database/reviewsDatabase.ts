@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { ReviewFormData, ReviewWithTags, ExperienceTag } from '@/shared/types/review'
+import { generateReviewEmbedding } from '@/core/services/freeEmbeddingService'
 
 // Fetch all experience tags
 export async function getExperienceTags(): Promise<ExperienceTag[]> {
@@ -101,6 +102,12 @@ export async function saveReview(
     }
 
     console.log('=== saveReview SUCCESS ===')
+    
+    // Generate embedding for the review (non-blocking)
+    generateReviewEmbedding(review.id).catch(error => {
+      console.error('Failed to generate review embedding:', error)
+    })
+    
     return { 
       success: true, 
       reviewId: review.id 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveNewPlace } from '@/core/database/placesDatabase';
+import { generatePlaceEmbedding } from '@/core/services/freeEmbeddingService';
 import type { PlaceFormData } from '@/shared/types/place';
 
 export async function POST(request: NextRequest) {
@@ -23,6 +24,13 @@ export async function POST(request: NextRequest) {
 
     // Save the place
     const placeId = await saveNewPlace(formData);
+    
+    // Generate embedding asynchronously (don't wait for it)
+    console.log(`🔧 Generating embedding for new place ${placeId}...`);
+    generatePlaceEmbedding(placeId).catch(error => {
+      console.error('Failed to generate place embedding:', error);
+      // Don't fail the request if embedding generation fails
+    });
     
     return NextResponse.json(
       { 

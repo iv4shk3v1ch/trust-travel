@@ -1,16 +1,21 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { chatbotService } from "@/core/services/chatbot";
 import { ChatMessage } from "@/shared/types/chatbot";
+// REMOVED: intentClassifier - now handled in single Groq call via chatbot prompt
+// import { classifyIntent, getResponseStrategy } from "@/core/services/intentClassifier";
+import { getIntentBasedRecommendations, type RecommendationContext } from "@/core/services/recommendationEngineV2";
+import { interactionTracker } from "@/core/services/interactionTracker";
+import { supabase } from "@/core/database/supabase";
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(" Chatbot API endpoint called");
+    console.log("💬 Chatbot API endpoint called");
     
     const body = await request.json();
     const { message, conversationHistory } = body;
 
-    console.log(" Received message:", message);
-    console.log(" Conversation history length:", conversationHistory?.length || 0);
+    console.log("📨 Received message:", message);
+    console.log("📚 Conversation history length:", conversationHistory?.length || 0);
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -21,109 +26,102 @@ export async function POST(request: NextRequest) {
 
     const history: ChatMessage[] = conversationHistory || [];
 
-    console.log(" Calling chatbot service...");
+    // Get current user for personalization
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Step 1: Process message with chatbot service (includes intent classification in single API call)
+    console.log("🤖 Calling chatbot service...");
     const result = await chatbotService.processUserMessage(message, history);
     
-    console.log(" Chatbot response generated successfully");
-    console.log(" Is complete:", result.isComplete);
+    console.log("✅ Chatbot response generated successfully");
+    console.log("📊 Is complete:", result.isComplete);
+
+    // Step 2: Extract intent from chatbot preferences (parsed from Groq JSON response)
+    const userIntent = result.preferences?.intent || 'informational'; // Default to informational
+    const intentConfidence = result.preferences ? 0.9 : 0.5; // High confidence if preferences present
+    
+    console.log("🎯 Intent from chatbot response:", {
+      intent: userIntent,
+      hasPreferences: !!result.preferences,
+      confidence: intentConfidence
+    });
+
+    // Step 3: Track chatbot interaction with intent
+    if (user) {
+      await interactionTracker.trackChatbotQuery(
+        message,
+        userIntent,
+        {
+          page: 'chatbot',
+          confidence: intentConfidence,
+          has_preferences: !!result.preferences
+        }
+      );
+    }
 
     let places: unknown[] = [];
     
-    // Always try to get recommendations if preferences are provided OR for common queries
-    const shouldGetRecommendations = result.preferences || 
-      message.toLowerCase().includes('trento') || 
-      message.toLowerCase().includes('must-see') || 
-      message.toLowerCase().includes('top places') || 
-      message.toLowerCase().includes('restaurant') || 
-      message.toLowerCase().includes('attractions') ||
-      message.toLowerCase().includes('things to do') ||
-      message.toLowerCase().includes('visit') ||
-      message.toLowerCase().includes('places') ||
-      message.toLowerCase().includes('dinner') ||
-      message.toLowerCase().includes('lunch') ||
-      message.toLowerCase().includes('food') ||
-      message.toLowerCase().includes('eat');
+    // Step 4: Get intent-based recommendations (only for goal-oriented and discovery intents)
+    const needsRecommendations = (userIntent === 'goal-oriented' || userIntent === 'discovery') 
+      && result.isComplete;
     
-    if (shouldGetRecommendations) {
+    if (needsRecommendations && result.preferences) {
       try {
-        console.log(" Getting recommendations from preferences...");
-        let preferences = result.preferences;
+        console.log("🗺️ Intent requires recommendations - using recommendation engine...");
         
-        // If no preferences but it's a common query, create basic preferences
-        if (!preferences) {
-          const msg = message.toLowerCase();
-          if (msg.includes('must-see') || msg.includes('top places') || msg.includes('attractions')) {
-            preferences = {
-              categories: ['museum', 'historical-site', 'viewpoint', 'attraction', 'restaurant'],
-              experienceTags: ['highly-rated', 'popular', 'must-visit'],
-              destination: 'trento-city',
-              budget: 'medium',
-              summary: 'Must-see attractions in Trento'
-            };
-          } else if (msg.includes('restaurant') || msg.includes('food') || msg.includes('dinner') || 
-                     msg.includes('lunch') || msg.includes('eat') || msg.includes('dining') || 
-                     msg.includes('meal') || msg.includes('breakfast') || msg.includes('brunch')) {
-            preferences = {
-              categories: ['restaurant'],
-              experienceTags: ['highly-rated', 'authentic-local'],
-              destination: 'trento-city',
-              budget: 'medium',
-              summary: 'Top restaurants in Trento'
-            };
-          } else {
-            // Default for general queries
-            preferences = {
-              categories: ['restaurant', 'museum', 'historical-site', 'park', 'viewpoint'],
-              experienceTags: ['popular', 'highly-rated'],
-              destination: 'trento-city',
-              budget: 'medium',
-              summary: 'Popular places in Trento'
-            };
-          }
-          console.log("🎯 Created basic preferences for query:", preferences);
+        // Build recommendation context from chatbot preferences
+        const context: RecommendationContext = {
+          intent: userIntent,
+          userId: user?.id,
+          location: result.preferences.destination || 'Trento',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          categories: result.preferences.categories as any, // Type assertion - categories from chatbot are valid
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          experienceTags: result.preferences.experienceTags as any, // Type assertion - tags from chatbot are valid
+          budget: result.preferences.budget,
+        };
+
+        // Add time context for "now" queries
+        if (message.toLowerCase().includes('now') || message.toLowerCase().includes('tonight')) {
+          context.timeContext = 'now';
         }
-        // Override wrong preferences for restaurant queries
-        else if (result.preferences && (message.toLowerCase().includes('restaurant') || 
-                 message.toLowerCase().includes('food') || message.toLowerCase().includes('dinner') || 
-                 message.toLowerCase().includes('lunch') || message.toLowerCase().includes('eat') || 
-                 message.toLowerCase().includes('dining') || message.toLowerCase().includes('meal'))) {
-          // Check if the preferences include non-restaurant categories
-          if (result.preferences.categories.some(cat => !['restaurant', 'bar', 'coffee-shop', 'fast-food'].includes(cat))) {
-            console.log("🔧 Fixing restaurant query - overriding broad categories");
-            preferences = {
-              categories: ['restaurant'],
-              experienceTags: ['highly-rated', 'authentic-local'],
-              destination: 'trento-city',
-              budget: 'medium',
-              summary: 'Top restaurants in Trento'
-            };
-          }
-        }
-        
-        const recommendations = await chatbotService.getRecommendationsFromPreferences(
-          preferences
-        );
-        console.log("🎯 Final preferences being sent to recommender:", {
-          categories: preferences.categories,
-          experienceTags: preferences.experienceTags
+
+        console.log("🎯 Recommendation context:", {
+          intent: context.intent,
+          categories: context.categories,
+          experienceTags: context.experienceTags,
+          userId: context.userId ? 'provided' : 'anonymous'
         });
+        
+        // Call new recommendation engine
+        const recommendations = await getIntentBasedRecommendations(context, 20);
         places = recommendations || [];
-        console.log(" Places found:", places.length);
+        console.log("✅ Places found with intent-based ranking:", places.length);
       } catch (error) {
-        console.error("Error getting recommendations:", error);
+        console.error("❌ Error getting intent-based recommendations:", error);
       }
+    } else if (userIntent === 'informational') {
+      console.log("ℹ️ Intent is informational - skipping recommendations");
+    } else {
+      console.log("💬 Intent needs more conversation - skipping recommendations");
     }
 
     return NextResponse.json({
       success: true,
       response: result.response,
-      isComplete: result.isComplete || places.length > 0, // Mark complete if we have places
+      isComplete: result.isComplete || places.length > 0,
       preferences: result.preferences,
-      places: places
+      places: places,
+      // Include intent info for debugging/analytics
+      intent: {
+        type: userIntent,
+        confidence: intentConfidence,
+        fromPreferences: !!result.preferences
+      }
     });
 
   } catch (error) {
-    console.error(" Error in chatbot API:", error);
+    console.error("❌ Error in chatbot API:", error);
     
     return NextResponse.json(
       { 

@@ -11,6 +11,7 @@ export interface ChatbotPreferences {
   destination: string;
   budget: 'low' | 'medium' | 'high';
   summary: string;
+  intent?: 'goal-oriented' | 'discovery' | 'informational'; // Added: parsed from chatbot JSON response
 }
 
 export interface ChatSession {
