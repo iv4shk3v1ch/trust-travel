@@ -176,7 +176,7 @@ export default function ConnectionsPage() {
           </div>
           <div className="flex flex-col items-end space-y-1">
             <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-              {getBudgetLabel(profile.budget_level)}
+              {getBudgetLabel(profile.budget)}
             </span>
             <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">
               {getTripStyleLabel(profile.trip_style)}

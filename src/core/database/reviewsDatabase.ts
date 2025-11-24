@@ -82,6 +82,8 @@ export async function saveReview(
 
     // If experience tags were selected, create the associations
     if (formData.experience_tag_ids && formData.experience_tag_ids.length > 0) {
+      console.log('Experience tag IDs from form:', formData.experience_tag_ids);
+      
       const tagAssociations = formData.experience_tag_ids.map(tagId => ({
         review_id: review.id,
         experience_tag_id: tagId,
@@ -90,15 +92,22 @@ export async function saveReview(
 
       console.log('Inserting tag associations:', tagAssociations)
 
-      const { error: tagsError } = await supabase
+      const { data: insertedTags, error: tagsError } = await supabase
         .from('review_experience_tags')
         .insert(tagAssociations)
+        .select('*')
 
       if (tagsError) {
         console.error('Tags insert error:', tagsError)
-        // Don't fail the whole operation if tags fail
-        console.warn('Failed to save experience tags, but review was saved')
+        console.error('Tags error details:', JSON.stringify(tagsError, null, 2))
+        // Don't fail the whole operation if tags fail, but log it prominently
+        console.warn('⚠️ Failed to save experience tags, but review was saved')
+      } else {
+        console.log('✅ Successfully inserted tags:', insertedTags)
       }
+    } else {
+      console.log('⚠️ No experience_tag_ids in formData. Tags will not be saved.')
+      console.log('formData keys:', Object.keys(formData))
     }
 
     console.log('=== saveReview SUCCESS ===')

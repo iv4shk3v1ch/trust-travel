@@ -8,12 +8,12 @@ import { saveNewProfile, DatabaseProfile } from '@/core/database/newDatabase';
 interface ProfileData {
   full_name: string;
   age: number;
-  gender: 'male' | 'female';
-  budget_level: 'low' | 'medium' | 'high';
+  gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
+  budget: 'low' | 'medium' | 'high'; // Changed from budget_level
   activities: string[];
   place_types: string[];
   food_preferences: string[];
-  food_restrictions: string[];
+  food_restrictions: string; // Changed from string[] to string (matches DB)
   personality_traits: string[];
   trip_style: 'planned' | 'mixed' | 'spontaneous';
 }
@@ -204,7 +204,7 @@ const BudgetStep: React.FC<{
     }
   ];
 
-  const isValid = data.budget_level && data.trip_style;
+  const isValid = data.budget && data.trip_style;
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-8">
@@ -220,9 +220,9 @@ const BudgetStep: React.FC<{
           {budgetOptions.map((option) => (
             <div
               key={option.value}
-              onClick={() => updateData({ budget_level: option.value as 'low' | 'medium' | 'high' })}
+              onClick={() => updateData({ budget: option.value as 'low' | 'medium' | 'high' })}
               className={`p-6 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                data.budget_level === option.value
+                data.budget === option.value
                   ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                   : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
               }`}
@@ -483,14 +483,10 @@ const FoodStep: React.FC<{
   ];
 
   const restrictionOptions = [
-    { value: 'vegetarian', label: 'Vegetarian', icon: '🥬' },
-    { value: 'vegan', label: 'Vegan', icon: '🌱' },
-    { value: 'gluten-free', label: 'Gluten-Free', icon: '🌾' },
-    { value: 'dairy-free', label: 'Dairy-Free', icon: '🥛' },
     { value: 'halal', label: 'Halal', icon: '☪️' },
-    { value: 'kosher', label: 'Kosher', icon: '✡️' },
-    { value: 'no shellfish', label: 'No Shellfish', icon: '🦐' },
-    { value: 'no nuts', label: 'Nut Allergy', icon: '🥜' }
+    { value: 'vegetarian', label: 'Vegetarian', icon: '🥬' },
+    { value: 'vegan', label: 'Vegan', icon: '�' },
+    { value: 'gluten-free', label: 'Gluten-Free', icon: '🌾' }
   ];
 
   const toggleFood = (food: string) => {
@@ -502,11 +498,12 @@ const FoodStep: React.FC<{
   };
 
   const toggleRestriction = (restriction: string) => {
-    const current = data.food_restrictions || [];
-    const updated = current.includes(restriction)
-      ? current.filter(r => r !== restriction)
-      : [...current, restriction];
-    updateData({ food_restrictions: updated });
+    const current = data.food_restrictions || '';
+    const restrictions = current ? current.split(',').map(r => r.trim()) : [];
+    const updated = restrictions.includes(restriction)
+      ? restrictions.filter(r => r !== restriction)
+      : [...restrictions, restriction];
+    updateData({ food_restrictions: updated.join(', ') });
   };
 
   const isValid = (data.food_preferences || []).length >= 1;
@@ -554,7 +551,8 @@ const FoodStep: React.FC<{
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Dietary Restrictions (Optional)</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {restrictionOptions.map((restriction) => {
-            const isSelected = (data.food_restrictions || []).includes(restriction.value);
+            const restrictions = (data.food_restrictions || '').split(',').map(r => r.trim()).filter(Boolean);
+            const isSelected = restrictions.includes(restriction.value);
             return (
               <div
                 key={restriction.value}
@@ -638,7 +636,7 @@ const PersonalityStep: React.FC<{
       console.log('Final profile data:', data);
       
       // Validate required fields
-      if (!data.full_name || !data.age || !data.gender || !data.budget_level || !data.trip_style) {
+      if (!data.full_name || !data.age || !data.gender || !data.budget || !data.trip_style) {
         throw new Error('Missing required fields');
       }
 
@@ -647,11 +645,11 @@ const PersonalityStep: React.FC<{
         full_name: data.full_name,
         age: data.age,
         gender: data.gender,
-        budget_level: data.budget_level,
+        budget: data.budget, // Changed from budget_level
         activities: data.activities || [],
         place_types: data.place_types || [],
         food_preferences: data.food_preferences || [],
-        food_restrictions: data.food_restrictions || [],
+        food_restrictions: data.food_restrictions || '', // Changed from []
         personality_traits: data.personality_traits || [],
         trip_style: data.trip_style
       });
@@ -739,16 +737,16 @@ const NewProfileForm: React.FC<NewProfileFormProps> = ({ onComplete, initialData
   const [profileData, setProfileData] = useState<Partial<ProfileData>>(() => {
     if (initialData) {
       return {
-        full_name: initialData.full_name,
-        age: initialData.age,
-        gender: initialData.gender,
-        budget_level: initialData.budget_level,
+        full_name: initialData.full_name || '',
+        age: initialData.age || undefined,
+        gender: initialData.gender || undefined,
+        budget: initialData.budget || undefined, // Changed from budget_level
         activities: initialData.activities || [],
         place_types: initialData.place_types || [],
         food_preferences: initialData.food_preferences || [],
-        food_restrictions: initialData.food_restrictions || [],
+        food_restrictions: initialData.food_restrictions || '', // Changed from [] to ''
         personality_traits: initialData.personality_traits || [],
-        trip_style: initialData.trip_style
+        trip_style: initialData.trip_style || undefined
       };
     }
     
@@ -757,7 +755,7 @@ const NewProfileForm: React.FC<NewProfileFormProps> = ({ onComplete, initialData
       activities: [],
       place_types: [],
       food_preferences: [],
-      food_restrictions: [],
+      food_restrictions: '', // Changed from [] to ''
       personality_traits: []
     };
   });

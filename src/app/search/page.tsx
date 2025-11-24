@@ -13,7 +13,7 @@ interface UserProfile {
   full_name: string;
   age: number;
   gender: string;
-  budget_level: 'low' | 'medium' | 'high';
+  budget: 'low' | 'medium' | 'high';
   activities: string[];
   place_types: string[];
   personality_traits: string[];
@@ -136,7 +136,7 @@ export default function SearchPage() {
     score += commonTraits * 15; // 15 points per common trait
     
     // Budget level compatibility
-    if (user1.budget_level === user2.budget_level) {
+    if (user1.budget === user2.budget) {
       score += 25; // 25 points for same budget level
     }
     
@@ -203,7 +203,7 @@ export default function SearchPage() {
         if (user.trip_style?.toLowerCase().includes(searchTerm)) return true;
         
         // Search in budget level
-        if (user.budget_level?.toLowerCase().includes(searchTerm)) return true;
+        if (user.budget?.toLowerCase().includes(searchTerm)) return true;
         
         // Search in gender
         if (user.gender?.toLowerCase().includes(searchTerm)) return true;
@@ -339,7 +339,7 @@ export default function SearchPage() {
           </div>
           <div className="flex flex-col items-end space-y-1">
             <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-              {getBudgetLabel(user.budget_level)}
+              {getBudgetLabel(user.budget)}
             </span>
             <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">
               {getTripStyleLabel(user.trip_style)}

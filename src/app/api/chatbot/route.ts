@@ -6,6 +6,7 @@ import { ChatMessage } from "@/shared/types/chatbot";
 import { getIntentBasedRecommendations, type RecommendationContext } from "@/core/services/recommendationEngineV2";
 import { interactionTracker } from "@/core/services/interactionTracker";
 import { supabase } from "@/core/database/supabase";
+import { loadExistingProfile } from "@/core/database/newDatabase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +29,34 @@ export async function POST(request: NextRequest) {
 
     // Get current user for personalization
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // Load user profile to get budget and other preferences
+    let userProfile = null;
+    if (user) {
+      try {
+        userProfile = await loadExistingProfile();
+        console.log("👤 User profile loaded:", {
+          budget: userProfile?.budget,
+          food_restrictions: userProfile?.food_restrictions,
+          env_preference: userProfile?.env_preference
+        });
+      } catch (error) {
+        console.warn("⚠️ Could not load user profile:", error);
+      }
+    }
 
     // Step 1: Process message with chatbot service (includes intent classification in single API call)
     console.log("🤖 Calling chatbot service...");
-    const result = await chatbotService.processUserMessage(message, history);
+    const result = await chatbotService.processUserMessage(
+      message, 
+      history, 
+      user?.id,
+      userProfile ? {
+        budget: userProfile.budget,
+        env_preference: userProfile.env_preference,
+        food_restrictions: userProfile.food_restrictions
+      } : null
+    );
     
     console.log("✅ Chatbot response generated successfully");
     console.log("📊 Is complete:", result.isComplete);
@@ -69,6 +94,14 @@ export async function POST(request: NextRequest) {
       try {
         console.log("🗺️ Intent requires recommendations - using recommendation engine...");
         
+        // Use user's profile budget if available, otherwise use chatbot-detected budget
+        const userBudget = userProfile?.budget as 'low' | 'medium' | 'high' | undefined;
+        const finalBudget = userBudget || result.preferences.budget;
+        
+        if (userBudget && userBudget !== result.preferences.budget) {
+          console.log(`💰 Overriding chatbot budget (${result.preferences.budget}) with user profile budget (${userBudget})`);
+        }
+        
         // Build recommendation context from chatbot preferences
         const context: RecommendationContext = {
           intent: userIntent,
@@ -78,7 +111,13 @@ export async function POST(request: NextRequest) {
           categories: result.preferences.categories as any, // Type assertion - categories from chatbot are valid
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           experienceTags: result.preferences.experienceTags as any, // Type assertion - tags from chatbot are valid
-          budget: result.preferences.budget,
+          budget: finalBudget, // Use user's profile budget if available
+          // Pass user profile for preference matching
+          userProfile: userProfile ? {
+            env_preference: userProfile.env_preference,
+            activity_style: userProfile.activity_style,
+            food_restrictions: userProfile.food_restrictions
+          } : undefined
         };
 
         // Add time context for "now" queries
@@ -106,11 +145,16 @@ export async function POST(request: NextRequest) {
       console.log("💬 Intent needs more conversation - skipping recommendations");
     }
 
+    // Override preferences budget with user profile budget for display
+    const finalPreferences = result.preferences && userProfile?.budget 
+      ? { ...result.preferences, budget: userProfile.budget as 'low' | 'medium' | 'high' }
+      : result.preferences;
+
     return NextResponse.json({
       success: true,
       response: result.response,
       isComplete: result.isComplete || places.length > 0,
-      preferences: result.preferences,
+      preferences: finalPreferences,
       places: places,
       // Include intent info for debugging/analytics
       intent: {

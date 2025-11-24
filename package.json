@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:tripadvisor": "tsx scripts/test-tripadvisor-api.ts",
-    "import:tripadvisor": "tsx scripts/import-tripadvisor-places.ts",
-    "add:test-places": "tsx scripts/add-test-places.ts"
+    "import:places": "tsx scripts/import-tripadvisor-places.ts",
+    "import:reviews": "tsx scripts/import-tripadvisor-reviews.ts",
+    "add:tags": "tsx scripts/add-review-tags-with-ai.ts",
+    "debug:reviews": "tsx scripts/debug-reviews.ts",
+    "check:coverage": "tsx scripts/check-review-coverage.ts",
+    "estimate:api": "tsx scripts/estimate-api-usage.ts",
+    "fix:coordinates": "tsx scripts/fix-coordinates.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

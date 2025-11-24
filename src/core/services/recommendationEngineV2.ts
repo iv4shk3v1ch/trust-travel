@@ -16,8 +16,9 @@
  *   0.05 * contextual_fit
  */
 
-import { supabase } from '../database/supabase';
+import { supabaseAdmin } from '../database/supabase';
 import type { ExperienceTag, PlaceCategory } from '@/shared/utils/dataStandards';
+import { userBehaviorService, type UserBehaviorProfile } from './userBehaviorService';
 
 type IntentType = 'goal-oriented' | 'discovery' | 'informational';
 
@@ -31,6 +32,12 @@ export interface RecommendationContext {
   timeContext?: 'now' | 'morning' | 'afternoon' | 'evening' | 'night' | 'weekend';
   environment?: 'indoor' | 'outdoor' | 'mixed';
   dietaryRestrictions?: string[];
+  // User profile preferences for matching
+  userProfile?: {
+    env_preference?: string | null;
+    activity_style?: string | null;
+    food_restrictions?: string | null;
+  };
 }
 
 export interface RecommendedPlace {
@@ -91,7 +98,7 @@ const RANKING_WEIGHTS = {
  * Get user's trusted network
  */
 async function getTrustedUsers(userId: string): Promise<string[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('trust_links')
     .select('source_user, target_user')
     .or(`source_user.eq.${userId},target_user.eq.${userId}`);
@@ -107,7 +114,7 @@ async function getTrustedUsers(userId: string): Promise<string[]> {
  * Get place type IDs for category slugs
  */
 async function getPlaceTypeIds(categories: PlaceCategory[]): Promise<string[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('place_types')
     .select('id')
     .in('slug', categories);
@@ -120,7 +127,7 @@ async function getPlaceTypeIds(categories: PlaceCategory[]): Promise<string[]> {
  * Get experience tag IDs for tag slugs
  */
 async function getExperienceTagIds(tags: ExperienceTag[]): Promise<string[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('experience_tags')
     .select('id')
     .in('slug', tags);
@@ -133,7 +140,7 @@ async function getExperienceTagIds(tags: ExperienceTag[]): Promise<string[]> {
  * Get user's place type preferences
  */
 async function getUserPlacePreferences(userId: string): Promise<Map<string, number>> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_place_preferences')
     .select(`
       place_type_id,
@@ -151,6 +158,22 @@ async function getUserPlacePreferences(userId: string): Promise<Map<string, numb
 }
 
 /**
+ * Normalize location name (e.g., "trento-city" -> "Trento")
+ */
+function normalizeLocation(location: string | undefined): string | undefined {
+  if (!location) return undefined;
+  
+  // Remove common suffixes
+  const normalized = location
+    .replace(/-city$/i, '')
+    .replace(/-town$/i, '')
+    .replace(/-village$/i, '');
+  
+  // Capitalize first letter
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+}
+
+/**
  * Main function: Get recommendations with SQL-based computation
  */
 export async function getIntentBasedRecommendations(
@@ -159,6 +182,40 @@ export async function getIntentBasedRecommendations(
 ): Promise<RecommendedPlace[]> {
   try {
     console.log(`🎯 Getting ${context.intent} recommendations (SQL-optimized)`);
+
+    // Normalize location name
+    const normalizedLocation = normalizeLocation(context.location);
+    console.log(`📍 Location: "${context.location}" -> "${normalizedLocation}"`);
+
+    // ✨ TASK 3: Fetch user behavioral profile
+    let userBehavior: UserBehaviorProfile | null = null;
+    if (context.userId) {
+      console.log('🧠 Fetching user behavioral profile...');
+      userBehavior = await userBehaviorService.getUserBehaviorProfile(context.userId);
+      
+      // Enhance context with behavioral insights
+      if (userBehavior.preferredPlaceTypes.length > 0) {
+        console.log(`🎯 User prefers: ${userBehavior.preferredPlaceTypes.join(', ')}`);
+        // Merge user's preferred types with AI-suggested categories
+        context.categories = context.categories 
+          ? [...new Set([...context.categories, ...userBehavior.preferredPlaceTypes])]
+          : userBehavior.preferredPlaceTypes;
+      }
+      
+      if (userBehavior.preferredTags.length > 0) {
+        console.log(`🏷️ User likes tags: ${userBehavior.preferredTags.join(', ')}`);
+        // Merge user's preferred tags with AI-suggested tags
+        context.experienceTags = context.experienceTags
+          ? [...new Set([...context.experienceTags, ...userBehavior.preferredTags])]
+          : userBehavior.preferredTags;
+      }
+      
+      // Use behavioral budget if no budget specified
+      if (!context.budget && userBehavior.budgetBehavior) {
+        console.log(`💰 Using user's budget behavior: ${userBehavior.budgetBehavior}`);
+        context.budget = userBehavior.budgetBehavior;
+      }
+    }
 
     // Step 1: Get trusted users for social trust calculation
     let trustedUserIds: string[] = [];
@@ -171,7 +228,8 @@ export async function getIntentBasedRecommendations(
     let placeTypeIds: string[] = [];
     if (context.categories && context.categories.length > 0) {
       placeTypeIds = await getPlaceTypeIds(context.categories);
-      console.log(`📂 Filtering by ${placeTypeIds.length} place types`);
+      console.log(`📂 Filtering by ${placeTypeIds.length} place types for categories:`, context.categories);
+      console.log(`📂 Place type IDs:`, placeTypeIds);
     }
 
     // Step 3: Get experience tag IDs for preference matching
@@ -188,97 +246,17 @@ export async function getIntentBasedRecommendations(
       console.log(`⭐ Loaded ${userPlacePrefs.size} user preferences`);
     }
 
-    // Step 5: Build SQL query with all scoring in database
-    let query = supabase.rpc('get_recommended_places', {
-      p_location: context.location || 'Trento',
-      p_place_type_ids: placeTypeIds.length > 0 ? placeTypeIds : null,
-      p_budget: context.budget || null,
-      p_environment: context.environment && context.environment !== 'mixed' ? context.environment : null,
-      p_trusted_user_ids: trustedUserIds.length > 0 ? trustedUserIds : null,
-      p_experience_tag_ids: experienceTagIds.length > 0 ? experienceTagIds : null,
-      p_limit: limit * 2 // Get more for post-processing
-    });
-
-    const { data: places, error } = await query;
-
-    if (error) {
-      console.error('❌ Error fetching recommendations:', error);
-      
-      // Fallback: Use simplified query without RPC
-      return await getRecommendationsSimplified(context, limit, placeTypeIds, trustedUserIds, experienceTagIds);
-    }
-
-    if (!places || places.length === 0) {
-      console.log('ℹ️ No places found matching criteria');
-      return [];
-    }
-
-    console.log(`✅ Got ${places.length} places from database`);
-
-    // Step 6: Post-process results (calculate preference_similarity and contextual_fit in JS)
-    const processed = places.map((place: any) => {
-      // Calculate preference_similarity (user's preference for this place type)
-      const preferenceStrength = userPlacePrefs.get(place.place_type_id) || 0.5;
-      const tagMatchScore = place.tag_match_count || 0;
-      const preference_similarity = (preferenceStrength * 0.6) + (tagMatchScore * 0.4);
-
-      // Calculate contextual_fit (overlap with requested experience tags)
-      const requestedTagCount = experienceTagIds.length || 1;
-      const contextual_fit = Math.min(tagMatchScore / requestedTagCount, 1.0);
-
-      // Calculate final score using your exact formula
-      const final_score =
-        RANKING_WEIGHTS.PREFERENCE_SIMILARITY * preference_similarity +
-        RANKING_WEIGHTS.QUALITY * place.quality_score +
-        RANKING_WEIGHTS.SOCIAL_TRUST * place.social_trust +
-        RANKING_WEIGHTS.POPULARITY * place.popularity_score +
-        RANKING_WEIGHTS.NOVELTY * place.novelty_score +
-        RANKING_WEIGHTS.CONTEXTUAL_FIT * contextual_fit;
-
-      // Map to old interface format for compatibility
-      return {
-        id: place.id,
-        name: place.name,
-        category: place.category_slug as PlaceCategory,
-        city: place.city,
-        address: place.address,
-        description: place.description,
-        photo_urls: place.photo_urls || [],
-        latitude: place.latitude,
-        longitude: place.longitude,
-        price_level: place.price_level,
-        indoor_outdoor: place.indoor_outdoor,
-        verified: place.verified || false,
-        
-        // OLD INTERFACE FIELDS (what UI expects)
-        average_rating: Math.round(place.avg_rating * 10) / 10,
-        review_count: place.review_count,
-        matching_tags: [] as ExperienceTag[],
-        tag_confidence: Math.round(contextual_fit * 100) / 100, // Map contextual_fit to tag_confidence
-        trusted_reviewers_count: place.trusted_review_count || 0,
-        social_trust_boost: Math.round(place.social_trust * 100) / 100, // Map social_trust to social_trust_boost
-        popularity_score: Math.round(place.popularity_score * 100) / 100,
-        novelty_score: Math.round(place.novelty_score * 100) / 100,
-        final_ranking_score: Math.round(final_score * 1000) / 1000, // Map final_score to final_ranking_score
-        
-        // NEW V2 FIELDS (optional, for debugging)
-        quality_score: Math.round(place.quality_score * 100) / 100,
-        social_trust: Math.round(place.social_trust * 100) / 100,
-        preference_similarity: Math.round(preference_similarity * 100) / 100,
-        contextual_fit: Math.round(contextual_fit * 100) / 100,
-        final_score: Math.round(final_score * 1000) / 1000
-      };
-    });
-
-    // Step 7: Sort by final_ranking_score (what the UI expects) and return top N
-    processed.sort((a: RecommendedPlace, b: RecommendedPlace) => 
-      b.final_ranking_score - a.final_ranking_score
+    // Step 5: Use simplified query with behavioral boosting
+    console.log('⚠️ Using simplified query approach');
+    return await getRecommendationsSimplified(
+      context, 
+      limit, 
+      placeTypeIds, 
+      trustedUserIds, 
+      experienceTagIds,
+      userBehavior, // Pass behavioral data for scoring
+      userPlacePrefs // Pass user preferences for scoring
     );
-    
-    const results = processed.slice(0, limit);
-    console.log(`🏆 Returning top ${results.length} recommendations`);
-    
-    return results;
 
   } catch (error) {
     console.error('❌ Error in getIntentBasedRecommendations:', error);
@@ -288,18 +266,32 @@ export async function getIntentBasedRecommendations(
 
 /**
  * Simplified fallback query (when RPC function doesn't exist yet)
+ * ENHANCED: Now includes behavioral data for personalized scoring
  */
 async function getRecommendationsSimplified(
   context: RecommendationContext,
   limit: number,
   placeTypeIds: string[],
   trustedUserIds: string[],
-  experienceTagIds: string[]
+  experienceTagIds: string[],
+  userBehavior: UserBehaviorProfile | null,
+  userPlacePrefs: Map<string, number>
 ): Promise<RecommendedPlace[]> {
   console.log('⚠️ Using simplified query (RPC function not found)');
+  console.log('🔍 Query parameters:', {
+    placeTypeIds,
+    placeTypeCount: placeTypeIds.length,
+    location: context.location,
+    budget: context.budget,
+    environment: context.environment
+  });
+
+  // Normalize location
+  const normalizedLocation = normalizeLocation(context.location);
+  console.log(`📍 Simplified query location: "${normalizedLocation}"`);
 
   // Build base query with filters
-  let query = supabase
+  let query = supabaseAdmin
     .from('places')
     .select(`
       id,
@@ -325,8 +317,8 @@ async function getRecommendationsSimplified(
     `);
 
   // Apply filters
-  if (context.location) {
-    query = query.eq('city', context.location);
+  if (normalizedLocation) {
+    query = query.ilike('city', normalizedLocation); // Use case-insensitive match
   }
 
   if (placeTypeIds.length > 0) {
@@ -343,6 +335,16 @@ async function getRecommendationsSimplified(
 
   const { data: places, error } = await query.limit(50);
 
+  console.log('📊 Query result:', {
+    error: error,
+    placesCount: places?.length || 0,
+    samplePlaces: places?.slice(0, 3).map(p => ({
+      name: p.name,
+      place_type_id: p.place_type_id,
+      type_slug: (Array.isArray(p.place_types) ? p.place_types[0]?.slug : null)
+    }))
+  });
+
   if (error || !places) {
     console.error('❌ Error in simplified query:', error);
     return [];
@@ -350,17 +352,37 @@ async function getRecommendationsSimplified(
 
   // Calculate scores in JavaScript (temporary until RPC is created)
   const processed = places
-    .map((place: any) => {
+    .map((place: { 
+      id: string; 
+      name: string; 
+      place_type_id: string; 
+      city: string; 
+      address?: string; 
+      description?: string; 
+      photo_urls?: string[];
+      latitude?: number;
+      longitude?: number;
+      price_level?: string;
+      indoor_outdoor?: string;
+      verified?: boolean;
+      created_at: string;
+      place_types: Array<{ slug: string; name: string }>;
+      reviews: Array<{ id: string; user_id: string; overall_rating?: number; created_at: string }>;
+    }) => {
       const reviews = place.reviews || [];
+      const placeType = Array.isArray(place.place_types) ? place.place_types[0] : place.place_types;
       
-      if (reviews.length === 0) return null; // Skip places without reviews
+      // Allow places without reviews (but they'll rank lower)
+      const hasReviews = reviews.length > 0;
 
       // Quality score
-      const avgRating = reviews.reduce((sum: number, r: any) => sum + (r.overall_rating || 0), 0) / reviews.length;
+      const avgRating = hasReviews 
+        ? reviews.reduce((sum: number, r: { overall_rating?: number }) => sum + (r.overall_rating || 0), 0) / reviews.length
+        : 0; // Default to 0 for places without reviews
       const quality_score = avgRating / 5.0;
 
       // Social trust
-      const trustedCount = reviews.filter((r: any) => trustedUserIds.includes(r.user_id)).length;
+      const trustedCount = reviews.filter((r: { user_id: string }) => trustedUserIds.includes(r.user_id)).length;
       const social_trust = reviews.length > 0 ? trustedCount / reviews.length : 0;
 
       // Popularity
@@ -370,8 +392,131 @@ async function getRecommendationsSimplified(
       const placeAge = (Date.now() - new Date(place.created_at).getTime()) / (1000 * 60 * 60 * 24);
       const novelty_score = placeAge < 30 ? 1.0 : placeAge < 90 ? 0.7 : placeAge < 180 ? 0.4 : 0.2;
 
-      // Preference similarity (simplified)
-      const preference_similarity = 0.5;
+      // Preference similarity (COMPREHENSIVE CALCULATION - 35% of final score!)
+      let preference_similarity = 0.0; // Start at 0 - build up based on matches
+      let matchCount = 0;
+      let totalChecks = 0;
+
+      // 1. USER PROFILE PREFERENCES (from user_place_preferences table)
+      if (userPlacePrefs.size > 0 && place.place_type_id) {
+        const prefStrength = userPlacePrefs.get(place.place_type_id);
+        if (prefStrength !== undefined) {
+          preference_similarity += prefStrength; // Range 0-1 from database
+          matchCount++;
+          console.log(`📊 Place "${place.name}" has user pref strength: ${prefStrength}`);
+        }
+        totalChecks++;
+      }
+
+      // 2. BEHAVIORAL PREFERENCES (from user interactions - saves, likes, hides)
+      if (userBehavior && placeType) {
+        const placeTypeSlug = placeType.slug as PlaceCategory;
+        
+        // Boost if place type matches user's preferred types (from saved places)
+        if (userBehavior.preferredPlaceTypes.includes(placeTypeSlug)) {
+          preference_similarity += 0.8; // Strong positive signal
+          matchCount++;
+          console.log(`🎯 "${place.name}" matches preferred type: ${placeTypeSlug}`);
+        }
+        totalChecks++;
+        
+        // Penalize if place is already saved (avoid duplication)
+        if (userBehavior.savedPlaceIds.includes(place.id)) {
+          preference_similarity -= 0.5;
+          console.log(`👎 "${place.name}" already saved - penalizing`);
+        }
+        
+        // Strong penalty if place is hidden/disliked
+        if (userBehavior.hiddenPlaceIds.includes(place.id)) {
+          preference_similarity -= 1.0; // Almost exclude
+          console.log(`� "${place.name}" hidden by user - strong penalty`);
+        }
+      }
+
+      // 3. EXPERIENCE TAGS MATCHING (from chatbot query + user preferences)
+      if (experienceTagIds.length > 0) {
+        // TODO: Fetch place's experience tags from place_experience_tags table
+        // For now, use a simplified tag match based on place category
+        // This is a placeholder - should query actual tags
+        const hasMatchingTags = false; // Placeholder
+        if (hasMatchingTags) {
+          preference_similarity += 0.6;
+          matchCount++;
+        }
+        totalChecks++;
+      }
+
+      // 4. USER PROFILE SETTINGS MATCHING (env_preference, activity_style)
+      if (context.userProfile) {
+        // Environment preference matching
+        if (context.userProfile.env_preference && place.indoor_outdoor) {
+          const userPrefersOutdoor = context.userProfile.env_preference === 'nature';
+          const userPrefersIndoor = context.userProfile.env_preference === 'city';
+          const placeIsOutdoor = place.indoor_outdoor === 'outdoor';
+          const placeIsIndoor = place.indoor_outdoor === 'indoor';
+          
+          if ((userPrefersOutdoor && placeIsOutdoor) || (userPrefersIndoor && placeIsIndoor)) {
+            preference_similarity += 0.4;
+            matchCount++;
+            console.log(`🌳 "${place.name}" matches env preference: ${context.userProfile.env_preference}`);
+          } else if (place.indoor_outdoor === 'mixed' || context.userProfile.env_preference === 'balanced') {
+            preference_similarity += 0.2; // Partial match
+            matchCount++;
+          }
+          totalChecks++;
+        }
+
+        // Food restrictions matching
+        if (context.userProfile.food_restrictions && placeType) {
+          const restrictions = context.userProfile.food_restrictions.split(',').map(r => r.trim().toLowerCase());
+          const foodRelatedCategories = ['restaurant', 'cafe', 'pizzeria', 'local-trattoria', 'bakery'];
+          const placeTypeSlug = placeType?.slug || '';
+          
+          if (foodRelatedCategories.includes(placeTypeSlug)) {
+            // For food places, dietary restrictions should be considered
+            // TODO: Match against place tags (vegan-friendly, halal, etc.)
+            // For now, give slight boost to assume food places can accommodate
+            preference_similarity += 0.2;
+            matchCount++;
+            console.log(`🍽️ "${place.name}" is food-related, considering restrictions: ${restrictions.join(', ')}`);
+            totalChecks++;
+          }
+        }
+      }
+
+      // 5. BUDGET MATCHING (not just filtering - score proximity too!)
+      if (context.budget && place.price_level) {
+        if (context.budget === place.price_level) {
+          preference_similarity += 0.5; // Perfect budget match
+          matchCount++;
+          console.log(`💰 "${place.name}" perfect budget match: ${context.budget}`);
+        } else {
+          // Partial credit for close budget
+          const budgetLevels = ['low', 'medium', 'high'];
+          const userBudgetIdx = budgetLevels.indexOf(context.budget);
+          const placeBudgetIdx = budgetLevels.indexOf(place.price_level);
+          const distance = Math.abs(userBudgetIdx - placeBudgetIdx);
+          
+          if (distance === 1) {
+            preference_similarity += 0.2; // One level off
+            console.log(`💰 "${place.name}" close budget match (${place.price_level} vs ${context.budget})`);
+          }
+        }
+        totalChecks++;
+      }
+
+      // Normalize preference_similarity
+      // If we have matches, average them. If no matches, use default 0.3
+      if (totalChecks > 0 && matchCount > 0) {
+        preference_similarity = preference_similarity / totalChecks;
+      } else if (totalChecks > 0) {
+        preference_similarity = 0.3; // Default for no matches but we have user data
+      } else {
+        preference_similarity = 0.5; // Default for anonymous users
+      }
+
+      // Clamp between 0 and 1
+      preference_similarity = Math.max(0, Math.min(1, preference_similarity));
 
       // Contextual fit (simplified)
       const contextual_fit = 0.5;
@@ -385,11 +530,26 @@ async function getRecommendationsSimplified(
         RANKING_WEIGHTS.NOVELTY * novelty_score +
         RANKING_WEIGHTS.CONTEXTUAL_FIT * contextual_fit;
 
+      // Log detailed scoring for debugging (only for top results)
+      if (final_score > 0.5 || preference_similarity > 0.6) {
+        console.log(`🎯 Scoring "${place.name}":`, {
+          preference_similarity: `${(preference_similarity * 100).toFixed(1)}% (weight: 35%)`,
+          quality_score: `${(quality_score * 100).toFixed(1)}% (weight: 25%)`,
+          social_trust: `${(social_trust * 100).toFixed(1)}% (weight: 20%)`,
+          popularity_score: `${(popularity_score * 100).toFixed(1)}% (weight: 10%)`,
+          novelty_score: `${(novelty_score * 100).toFixed(1)}% (weight: 5%)`,
+          contextual_fit: `${(contextual_fit * 100).toFixed(1)}% (weight: 5%)`,
+          final_score: `${(final_score * 100).toFixed(1)}%`,
+          matchCount,
+          totalChecks
+        });
+      }
+
       // Map to old interface format
       return {
         id: place.id,
         name: place.name,
-        category: place.place_types.slug as PlaceCategory,
+        category: (placeType?.slug || 'restaurant') as PlaceCategory,
         city: place.city,
         address: place.address,
         description: place.description,
@@ -418,8 +578,7 @@ async function getRecommendationsSimplified(
         contextual_fit: Math.round(contextual_fit * 100) / 100,
         final_score: Math.round(final_score * 1000) / 1000
       };
-    })
-    .filter((p) => p !== null) as RecommendedPlace[];
+    }) as RecommendedPlace[]; // No filter - include all places
 
   // Sort by final_ranking_score (what UI expects)
   processed.sort((a: RecommendedPlace, b: RecommendedPlace) => b.final_ranking_score - a.final_ranking_score);

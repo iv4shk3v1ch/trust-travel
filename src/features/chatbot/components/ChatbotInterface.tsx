@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/shared/components/Button';
+import { PlaceCard } from '@/shared/components/PlaceCard';
 import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
 import { RecommendedPlace } from '@/core/services/recommender';
 
@@ -30,13 +31,14 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>(''); // Progressive loading message
   const [recommendations, setRecommendations] = useState<RecommendedPlace[]>([]);
-  const [preferences, setPreferences] = useState<ChatbotPreferences | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [showDebugInfo, setShowDebugInfo] = useState(true);
-  const [lastApiResponse, setLastApiResponse] = useState<any>(null);
+  const [lastApiResponse, setLastApiResponse] = useState<{ success: boolean; places?: RecommendedPlace[]; preferences?: ChatbotPreferences; isComplete?: boolean; response?: string } | null>(null);
   const [allRecommendations, setAllRecommendations] = useState<RecommendedPlace[]>([]); // Cumulative recommendations
+  const [rightPanelView, setRightPanelView] = useState<'map' | 'list'>('map'); // Toggle between map and list
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +64,16 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
+    setLoadingMessage('Understanding your request...');
+
+    // Progressive loading states
+    const loadingTimer1 = setTimeout(() => {
+      setLoadingMessage('Finding the best places...');
+    }, 2000);
+
+    const loadingTimer2 = setTimeout(() => {
+      setLoadingMessage('Almost there...');
+    }, 5000);
 
     try {
       const response = await fetch('/api/chatbot', {
@@ -74,6 +86,10 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           conversationHistory: messages
         }),
       });
+
+      // Clear loading timers
+      clearTimeout(loadingTimer1);
+      clearTimeout(loadingTimer2);
 
       if (!response.ok) {
         throw new Error('Failed to send message');
@@ -122,10 +138,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
         setRecommendations(data.places);
       }
 
-      // Store preferences for debug display
-      if (data.preferences) {
-        setPreferences(data.preferences);
-      }
+      // Note: Preferences are stored in lastApiResponse for debug display
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -138,6 +151,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -159,7 +173,6 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     ]);
     setRecommendations([]);
     setAllRecommendations([]); // Clear cumulative recommendations
-    setPreferences(null);
     setShowMobileMap(false);
     inputRef.current?.focus();
   };
@@ -303,10 +316,15 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-700 px-4 py-3 rounded-2xl mr-12 border border-gray-200 dark:border-gray-600 shadow-sm">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  {loadingMessage && (
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{loadingMessage}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -362,7 +380,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                     <div>
                       <p className="font-medium text-yellow-800 dark:text-yellow-200">Places Preview:</p>
                       <div className="bg-yellow-100 dark:bg-yellow-800/30 p-2 rounded text-yellow-800 dark:text-yellow-200 max-h-32 overflow-y-auto">
-                        {lastApiResponse.places.slice(0, 5).map((place: any, index: number) => (
+                        {lastApiResponse.places.slice(0, 5).map((place: RecommendedPlace, index: number) => (
                           <p key={index} className="text-xs">
                             • {place.name} ({place.category}) - ⭐{place.average_rating}
                           </p>
@@ -416,40 +434,126 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
             </div>
         </div>
 
-        {/* Right Side - Map or Welcome Screen */}
+        {/* Right Side - Map or Places List */}
         <div className="hidden lg:flex lg:w-1/2 flex-col border-l border-gray-200 dark:border-gray-700">
           {allRecommendations.length > 0 ? (
             <>
-              {/* Enhanced Dark Theme Map Header */}
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg">
-                <div>
-                  <h3 className="text-lg font-semibold flex items-center">
-                    <span className="mr-2">🗺️</span>
-                    Locations Map
-                  </h3>
-                  <p className="text-sm text-gray-300">
-                    {allRecommendations.length} places found • Click markers for details
-                  </p>
+              {/* Tabs Header */}
+              <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg">
+                {/* Tab Buttons */}
+                <div className="flex border-b border-gray-700">
+                  <button
+                    onClick={() => setRightPanelView('map')}
+                    className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-all ${
+                      rightPanelView === 'map'
+                        ? 'bg-gray-700 text-white border-b-2 border-indigo-400'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <span>🗺️</span>
+                    <span className="font-medium">Map View</span>
+                  </button>
+                  <button
+                    onClick={() => setRightPanelView('list')}
+                    className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-all ${
+                      rightPanelView === 'list'
+                        ? 'bg-gray-700 text-white border-b-2 border-indigo-400'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <span>📍</span>
+                    <span className="font-medium">Places List ({allRecommendations.length})</span>
+                  </button>
                 </div>
-                <Button
-                  onClick={toggleFullscreenMap}
-                  className="bg-gray-700 border-gray-600 hover:bg-gray-600 text-gray-200 px-3 py-2 text-sm transition-all duration-200"
-                >
-                  <span className="flex items-center space-x-1">
-                    <span>⛶</span>
-                    <span>Fullscreen</span>
-                  </span>
-                </Button>
+                
+                {/* Tab Info */}
+                <div className="px-4 py-2">
+                  {rightPanelView === 'map' ? (
+                    <p className="text-sm text-gray-300">
+                      {allRecommendations.length} places on map • Click markers for details
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-300">
+                      👍 Like, 💾 Save, or ✕ Hide places to personalize future recommendations
+                    </p>
+                  )}
+                </div>
               </div>
               
-              {/* Map Container */}
-              <div className="flex-1 relative">
-                <div className="absolute inset-0 bg-gray-900 rounded-b-lg overflow-hidden">
-                  <InteractiveMap 
-                    recommendations={allRecommendations} 
-                    className="h-full w-full"
-                  />
-                </div>
+              {/* Tab Content */}
+              <div className="flex-1 overflow-hidden">
+                {rightPanelView === 'map' ? (
+                  /* Map View */
+                  <div className="h-full relative">
+                    <div className="absolute inset-0 bg-gray-900">
+                      <InteractiveMap 
+                        recommendations={allRecommendations} 
+                        className="h-full w-full"
+                      />
+                    </div>
+                    {/* Fullscreen Button */}
+                    <button
+                      onClick={toggleFullscreenMap}
+                      className="absolute bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-gray-700 transition-all z-10 flex items-center space-x-2"
+                    >
+                      <span>⛶</span>
+                      <span>Fullscreen</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* Places List View */
+                  <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-800 p-4 space-y-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Click the buttons to track your preferences:
+                      <div className="mt-2 space-y-1">
+                        <div>👍 <strong>Like</strong> - Recommend more places like this</div>
+                        <div>💾 <strong>Save</strong> - Save for your trip</div>
+                        <div>✕ <strong>Hide</strong> - Don&apos;t show places like this again</div>
+                      </div>
+                    </div>
+                    
+                    {allRecommendations.map((place, index) => (
+                      <PlaceCard
+                        key={place.id}
+                        place={{
+                          id: place.id,
+                          name: place.name,
+                          place_type_id: place.id, // Using place id as fallback
+                          city: place.city,
+                          country: 'Italy',
+                          address: place.address || null,
+                          latitude: place.latitude || null,
+                          longitude: place.longitude || null,
+                          phone: place.phone || null,
+                          website: place.website || null,
+                          working_hours: place.working_hours || null,
+                          description: place.description || null,
+                          photo_urls: place.photo_urls || null,
+                          price_level: null,
+                          indoor_outdoor: place.indoor_outdoor as 'indoor' | 'outdoor' | 'mixed' | null || null,
+                          avg_rating: place.average_rating || null,
+                          review_count: place.review_count || null,
+                          verified: place.verified || null,
+                          created_by: null,
+                          created_at: new Date().toISOString(),
+                          updated_at: new Date().toISOString(),
+                          place_type: {
+                            id: place.id,
+                            slug: place.category,
+                            name: place.category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            description: null,
+                            icon: null,
+                            created_at: new Date().toISOString()
+                          }
+                        }}
+                        position={index}
+                        source="chatbot"
+                        algorithm="recommendation-engine-v2"
+                        score={place.final_ranking_score}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -469,12 +573,15 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
               {/* Welcome Content */}
               <div className="flex-1 flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-800">
                 <div className="text-center max-w-md">
-                  <div className="text-6xl mb-6">�</div>
+                  <div className="text-6xl mb-6">🗺️</div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Map Ready
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                     Start describing what you&apos;re looking for and recommended places will appear here with precise locations.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-4">
+                    💡 Tip: You&apos;ll be able to like, save, or hide places to improve future recommendations!
                   </p>
                 </div>
               </div>

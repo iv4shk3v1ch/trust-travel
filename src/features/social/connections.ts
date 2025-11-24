@@ -20,7 +20,7 @@ export interface UserConnection {
     activities: string[];
     personality_traits: string[];
     trip_style: string;
-    budget_level: string;
+    budget: string;
   };
 }
 
@@ -36,7 +36,7 @@ export interface UserWhoTrustsMe {
     activities: string[];
     personality_traits: string[];
     trip_style: string;
-    budget_level: string;
+    budget: string;
   };
 }
 
@@ -181,7 +181,7 @@ export async function getMyConnections(): Promise<UserConnection[]> {
     const targetUserIds = links.map(link => link.target_user);
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, age, gender, activities, personality_traits, trip_style, budget_level')
+      .select('id, full_name, age, gender, activities, personality_traits, trip_style, budget')
       .in('id', targetUserIds);
 
     if (profilesError) {
@@ -249,7 +249,7 @@ export async function getUsersWhoTrustMe(): Promise<UserWhoTrustsMe[]> {
     const sourceUserIds = links.map(link => link.source_user);
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, age, gender, activities, personality_traits, trip_style, budget_level')
+      .select('id, full_name, age, gender, activities, personality_traits, trip_style, budget')
       .in('id', sourceUserIds);
 
     if (profilesError) {

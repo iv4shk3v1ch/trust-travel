@@ -41,7 +41,7 @@ export default function ProfileEditPage() {
             budget: profile.budget || 'medium',
             env_preference: profile.env_preference || '',
             activity_style: profile.activity_style || '',
-            food_restrictions: profile.food_restrictions || ''
+            food_restrictions: profile.food_restrictions || '' // Already a string in DB
           });
         }
       } catch (error) {
@@ -72,10 +72,10 @@ export default function ProfileEditPage() {
         full_name: formData.full_name,
         age: parseInt(formData.age),
         gender: formData.gender as 'male' | 'female' | 'non-binary' | 'prefer-not-to-say',
-        budget: formData.budget,
+        budget: formData.budget as 'low' | 'medium' | 'high',
         env_preference: formData.env_preference || null,
         activity_style: formData.activity_style || null,
-        food_restrictions: formData.food_restrictions || null
+        food_restrictions: formData.food_restrictions || '' // Keep as string, not array
       };
 
       await saveNewProfile(profileData);
@@ -248,23 +248,51 @@ export default function ProfileEditPage() {
           {/* Dietary Information */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Dietary Information
+              Dietary Restrictions
             </h3>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Food Restrictions
-              </label>
-              <textarea
-                value={formData.food_restrictions}
-                onChange={(e) => setFormData({ ...formData, food_restrictions: e.target.value })}
-                placeholder="e.g., Vegetarian, Gluten-free, Allergies..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              />
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                List any dietary restrictions or allergies
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { value: 'halal', label: 'Halal', icon: '☪️' },
+                { value: 'vegetarian', label: 'Vegetarian', icon: '🥬' },
+                { value: 'vegan', label: 'Vegan', icon: '🌱' },
+                { value: 'gluten-free', label: 'Gluten-Free', icon: '🌾' }
+              ].map((restriction) => {
+                const restrictions = formData.food_restrictions 
+                  ? formData.food_restrictions.split(',').map(r => r.trim()).filter(Boolean)
+                  : [];
+                const isSelected = restrictions.includes(restriction.value);
+                
+                return (
+                  <div
+                    key={restriction.value}
+                    onClick={() => {
+                      const current = formData.food_restrictions 
+                        ? formData.food_restrictions.split(',').map(r => r.trim()).filter(Boolean)
+                        : [];
+                      const updated = current.includes(restriction.value)
+                        ? current.filter(r => r !== restriction.value)
+                        : [...current, restriction.value];
+                      setFormData({ ...formData, food_restrictions: updated.join(', ') });
+                    }}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                      isSelected
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-center space-y-2">
+                      <div className="text-2xl">{restriction.icon}</div>
+                      <div className="font-medium text-gray-900 dark:text-white text-sm">
+                        {restriction.label}
+                      </div>
+                      {isSelected && (
+                        <div className="text-red-500 text-xl">✓</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

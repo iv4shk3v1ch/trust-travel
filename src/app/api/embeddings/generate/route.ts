@@ -39,9 +39,8 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({
-        success: true,
-        message: `Batch generation complete for ${type}s`,
-        ...result
+        ...result,
+        message: `Batch generation complete for ${type}s`
       });
     }
 
@@ -69,6 +68,7 @@ export async function POST(request: NextRequest) {
         message: `Embedding generated for ${type} ${id}`
       });
     } catch (genError) {
+      console.error(`Failed to generate embedding for ${type} ${id}:`, genError);
       return NextResponse.json(
         { success: false, error: `Failed to generate embedding for ${type} ${id}` },
         { status: 500 }

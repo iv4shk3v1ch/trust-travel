@@ -23,7 +23,7 @@ export function calculateProfileCompleteness(profile: DatabaseProfile): {
     { key: 'full_name', name: 'Name' },
     { key: 'age', name: 'Age' },
     { key: 'gender', name: 'Gender' },
-    { key: 'budget_level', name: 'Budget Level' },
+    { key: 'budget', name: 'Budget Level' },
     { key: 'trip_style', name: 'Trip Style' }
   ];
 

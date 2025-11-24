@@ -12,8 +12,8 @@ interface DatabaseProfile {
   activities?: string[];
   personality_traits?: string[];
   trip_style?: string;
-  budget_level?: string;
-  food_restrictions?: string[];
+  budget?: string; // Changed from budget_level to match DB schema
+  food_restrictions?: string; // Changed from string[] to string to match DB schema
   spending_style?: string;
   created_at?: string;
   updated_at?: string;
@@ -39,10 +39,11 @@ export class ChatbotService {
     const enhanced = { ...chatPreferences };
 
     // Add user's dietary restrictions and food preferences
-    if (userProfile.food_restrictions?.length) {
+    if (userProfile.food_restrictions) {
       console.log('🍽️ Adding dietary restrictions:', userProfile.food_restrictions);
-      // Add food-related tags based on restrictions
-      const foodTags = userProfile.food_restrictions
+      // Parse comma-separated string into array and add as tags
+      const restrictions = userProfile.food_restrictions.split(',').map(r => r.trim()).filter(Boolean);
+      const foodTags = restrictions
         .map((restriction: string) => restriction.toLowerCase().replace(' ', '-')) as ExperienceTag[];
       enhanced.experienceTags = [...new Set([...enhanced.experienceTags, ...foodTags])];
     }
@@ -56,9 +57,9 @@ export class ChatbotService {
     }
 
     // Add budget preferences (could influence place selection)
-    if (userProfile.budget_level) {
-      console.log('💰 Adding budget preference:', userProfile.budget_level);
-      const budgetTag = userProfile.budget_level.toLowerCase().replace(' ', '-') as ExperienceTag;
+    if (userProfile.budget) {
+      console.log('💰 Adding budget preference:', userProfile.budget);
+      const budgetTag = userProfile.budget.toLowerCase().replace(' ', '-') as ExperienceTag;
       enhanced.experienceTags = [...new Set([...enhanced.experienceTags, budgetTag])];
     }
 
@@ -96,7 +97,8 @@ export class ChatbotService {
   async processUserMessage(
     userMessage: string,
     conversationHistory: ChatMessage[] = [],
-    userId?: string
+    userId?: string,
+    userProfile?: { budget?: string; env_preference?: string | null; food_restrictions?: string | null } | null
   ): Promise<{
     response: string;
     isComplete: boolean;
@@ -104,12 +106,40 @@ export class ChatbotService {
   }> {
     try {
       // No more forced recommendations - let the conversation flow naturally
-      console.log('�️ Processing user message naturally');
+      console.log('💭 Processing user message naturally');
       console.log('👤 User ID for personalization:', userId || 'anonymous');
+
+      // Build system message with user context
+      let systemPrompt = TRAVEL_CHATBOT_SYSTEM_PROMPT;
+      
+      // Inject user profile context into the prompt
+      if (userProfile) {
+        const userContext = [];
+        
+        if (userProfile.budget) {
+          userContext.push(`User's budget preference: ${userProfile.budget}`);
+        }
+        
+        if (userProfile.env_preference) {
+          userContext.push(`User's environment preference: ${userProfile.env_preference}`);
+        }
+        
+        if (userProfile.food_restrictions) {
+          userContext.push(`User's dietary restrictions: ${userProfile.food_restrictions}`);
+        }
+        
+        if (userContext.length > 0) {
+          systemPrompt = systemPrompt + `\n\nUSER PROFILE CONTEXT:\n${userContext.join('\n')}\n\nIMPORTANT: When generating budget in JSON, use "${userProfile.budget || 'medium'}" as the default instead of "medium" (unless user explicitly mentions different budget keywords).`;
+          console.log('📋 Added user context to system prompt:', userContext);
+        }
+      }
 
       // Prepare conversation for Groq
       const messages = [
-        this.systemMessage,
+        {
+          role: 'system' as const,
+          content: systemPrompt
+        },
         ...conversationHistory.map(msg => ({
           role: msg.role,
           content: msg.content

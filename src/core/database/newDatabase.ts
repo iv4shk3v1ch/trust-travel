@@ -1,15 +1,21 @@
 import { supabase } from './supabase';
 
-// Updated to match simplified database schema
+// Updated to match actual database schema with extended profile fields
 export interface DatabaseProfile {
   id: string;
   full_name: string | null;
   age: number | null;
   gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
-  budget: 'low' | 'medium' | 'high';
-  env_preference: 'city' | 'nature' | 'balanced' | null;
-  activity_style: 'active' | 'relaxing' | 'balanced' | null;
-  food_restrictions: string | null;
+  budget?: 'low' | 'medium' | 'high'; // Changed from budget_level to budget
+  activities?: string[];
+  place_types?: string[];
+  food_preferences?: string[];
+  food_restrictions?: string; // Changed from string[] to string (matches DB schema)
+  personality_traits?: string[];
+  trip_style?: 'planned' | 'mixed' | 'spontaneous';
+  spending_style?: string | null;
+  env_preference?: 'city' | 'nature' | 'balanced' | null;
+  activity_style?: 'active' | 'relaxing' | 'balanced' | null;
   updated_at?: string;
 }
 
@@ -45,16 +51,22 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
     throw new Error(`Invalid gender: ${profileData.gender}. Allowed values: male, female, non-binary, prefer-not-to-say`);
   }
 
-  // Save only the fields that exist in the simplified schema
+  // Save all profile fields
   const profileToSave = {
     id: user.id,
     full_name: profileData.full_name,
     age: profileData.age,
     gender: profileData.gender,
-    budget: profileData.budget,
+    budget: profileData.budget, // Changed from budget_level
+    activities: profileData.activities,
+    place_types: profileData.place_types,
+    food_preferences: profileData.food_preferences,
+    food_restrictions: profileData.food_restrictions,
+    personality_traits: profileData.personality_traits,
+    trip_style: profileData.trip_style,
+    spending_style: profileData.spending_style,
     env_preference: profileData.env_preference,
-    activity_style: profileData.activity_style,
-    food_restrictions: profileData.food_restrictions
+    activity_style: profileData.activity_style
   };
 
   console.log('📤 Profile to save:', JSON.stringify(profileToSave, null, 2));

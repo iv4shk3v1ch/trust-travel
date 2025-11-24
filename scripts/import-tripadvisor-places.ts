@@ -234,6 +234,7 @@ function mapCategory(location: TripAdvisorLocation): string | null {
   
   // Try to find a matching category
   for (const sub of subcategories) {
+    if (!sub || !sub.key) continue; // Skip if no key
     const key = sub.key.toLowerCase();
     
     // Check if excluded
@@ -301,6 +302,7 @@ async function fetchTripAdvisorLocations(category?: string): Promise<TripAdvisor
   url.searchParams.set('radius', SEARCH_RADIUS.toString());
   url.searchParams.set('radiusUnit', 'km');
   url.searchParams.set('language', 'en');
+  url.searchParams.set('key', TRIPADVISOR_API_KEY); // Add API key as query parameter
   
   if (category) {
     url.searchParams.set('category', category);
@@ -312,8 +314,7 @@ async function fetchTripAdvisorLocations(category?: string): Promise<TripAdvisor
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'key': TRIPADVISOR_API_KEY
+        'Accept': 'application/json'
       }
     });
     
@@ -336,14 +337,13 @@ async function fetchTripAdvisorLocations(category?: string): Promise<TripAdvisor
  * Fetch detailed location data from TripAdvisor
  */
 async function fetchLocationDetails(locationId: string): Promise<TripAdvisorLocation | null> {
-  const url = `${TRIPADVISOR_BASE_URL}/location/${locationId}/details`;
+  const url = `${TRIPADVISOR_BASE_URL}/location/${locationId}/details?key=${TRIPADVISOR_API_KEY}`;
   
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'key': TRIPADVISOR_API_KEY
+        'Accept': 'application/json'
       }
     });
     
