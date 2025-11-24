@@ -75,6 +75,9 @@ const TRENTO_COORDINATES: Record<string, { lat: number; lng: number }> = {
   hotel: { lat: 46.0680, lng: 11.1220 },
 };
 
+// Track which places we've already logged to avoid spam (3 map instances = 3x logs)
+const loggedPlaces = new Set<string>();
+
 // Helper function to get coordinates for a place
 function getPlaceCoordinates(place: RecommendedPlace): { lat: number; lng: number } | null {
   // If place has coordinates from database, use them (ensure they're numbers)
@@ -84,14 +87,21 @@ function getPlaceCoordinates(place: RecommendedPlace): { lat: number; lng: numbe
     
     // Validate the parsed coordinates
     if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-      console.log(`📍 Using database coordinates for ${place.name}:`, { lat, lng });
+      // Only log once per unique place to avoid 3x spam from multiple map instances
+      if (!loggedPlaces.has(place.id)) {
+        console.log(`📍 Using database coordinates for ${place.name}:`, { lat, lng });
+        loggedPlaces.add(place.id);
+      }
       return { lat, lng };
     }
   }
   
   // Try to find by exact name match in fallback coordinates
   if (TRENTO_COORDINATES[place.name]) {
-    console.log(`📍 Using fallback coordinates for ${place.name}:`, TRENTO_COORDINATES[place.name]);
+    if (!loggedPlaces.has(place.id)) {
+      console.log(`📍 Using fallback coordinates for ${place.name}:`, TRENTO_COORDINATES[place.name]);
+      loggedPlaces.add(place.id);
+    }
     return TRENTO_COORDINATES[place.name];
   }
   
@@ -102,7 +112,10 @@ function getPlaceCoordinates(place: RecommendedPlace): { lat: number; lng: numbe
       lat: categoryCoords.lat + (Math.random() - 0.5) * 0.01, // Add small random offset
       lng: categoryCoords.lng + (Math.random() - 0.5) * 0.01
     };
-    console.log(`📍 Using random category coordinates for ${place.name}:`, randomCoords);
+    if (!loggedPlaces.has(place.id)) {
+      console.log(`📍 Using random category coordinates for ${place.name}:`, randomCoords);
+      loggedPlaces.add(place.id);
+    }
     return randomCoords;
   }
   
@@ -111,7 +124,10 @@ function getPlaceCoordinates(place: RecommendedPlace): { lat: number; lng: numbe
     lat: 46.0678 + (Math.random() - 0.5) * 0.02,
     lng: 11.1246 + (Math.random() - 0.5) * 0.02
   };
-  console.log(`📍 Using default random coordinates for ${place.name}:`, defaultCoords);
+  if (!loggedPlaces.has(place.id)) {
+    console.log(`📍 Using default random coordinates for ${place.name}:`, defaultCoords);
+    loggedPlaces.add(place.id);
+  }
   return defaultCoords;
 }
 

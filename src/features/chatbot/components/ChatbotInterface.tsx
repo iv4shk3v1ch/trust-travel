@@ -8,8 +8,8 @@ import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
 import { RecommendedPlace } from '@/core/services/recommender';
 
 // Dynamically import the map to avoid SSR issues
-const InteractiveMap = dynamic(
-  () => import('./InteractiveMap').then(mod => ({ default: mod.InteractiveMap })),
+const InteractiveMap = dynamic<{ recommendations: RecommendedPlace[]; className: string }>(
+  () => import('./InteractiveMap').then(mod => mod.InteractiveMap),
   {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">Loading map...</div>
@@ -18,6 +18,16 @@ const InteractiveMap = dynamic(
 
 interface ChatbotInterfaceProps {
   onClose?: () => void;
+}
+
+// LocalStorage keys
+const CHATBOT_STORAGE_KEY = 'trusttravel_chatbot_session';
+const CHATBOT_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+interface ChatbotSession {
+  messages: ChatMessage[];
+  allRecommendations: RecommendedPlace[];
+  timestamp: number;
 }
 
 export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) => {
@@ -39,6 +49,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   const [lastApiResponse, setLastApiResponse] = useState<{ success: boolean; places?: RecommendedPlace[]; preferences?: ChatbotPreferences; isComplete?: boolean; response?: string } | null>(null);
   const [allRecommendations, setAllRecommendations] = useState<RecommendedPlace[]>([]); // Cumulative recommendations
   const [rightPanelView, setRightPanelView] = useState<'map' | 'list'>('map'); // Toggle between map and list
+  const [isSessionRestored, setIsSessionRestored] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +57,62 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const loadChatHistory = () => {
+      try {
+        const stored = localStorage.getItem(CHATBOT_STORAGE_KEY);
+        if (!stored) return;
+
+        const session: ChatbotSession = JSON.parse(stored);
+        
+        // Check if session is still valid (not expired)
+        const now = Date.now();
+        if (now - session.timestamp > CHATBOT_SESSION_TTL) {
+          console.log('💾 Chatbot session expired, starting fresh');
+          localStorage.removeItem(CHATBOT_STORAGE_KEY);
+          return;
+        }
+
+        // Restore messages with Date objects
+        const restoredMessages = session.messages.map(msg => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+
+        console.log(`💾 Restored chatbot session: ${restoredMessages.length} messages, ${session.allRecommendations.length} places`);
+        
+        setMessages(restoredMessages);
+        setAllRecommendations(session.allRecommendations);
+        setIsSessionRestored(true);
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+        localStorage.removeItem(CHATBOT_STORAGE_KEY);
+      }
+    };
+
+    loadChatHistory();
+  }, []);
+
+  // Save chat history to localStorage whenever messages or recommendations change
+  useEffect(() => {
+    // Don't save during initial mount (before restoration check)
+    if (!isSessionRestored && messages.length === 1) return;
+
+    try {
+      const session: ChatbotSession = {
+        messages,
+        allRecommendations,
+        timestamp: Date.now()
+      };
+
+      localStorage.setItem(CHATBOT_STORAGE_KEY, JSON.stringify(session));
+      console.log(`💾 Saved chatbot session: ${messages.length} messages, ${allRecommendations.length} places`);
+    } catch (error) {
+      console.error('Error saving chat history:', error);
+    }
+  }, [messages, allRecommendations, isSessionRestored]);
 
   useEffect(() => {
     scrollToBottom();
@@ -163,6 +230,10 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   };
 
   const restartChat = () => {
+    // Clear localStorage
+    localStorage.removeItem(CHATBOT_STORAGE_KEY);
+    console.log('🔄 Chatbot session cleared');
+    
     setMessages([
       {
         id: '1',
@@ -174,6 +245,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     setRecommendations([]);
     setAllRecommendations([]); // Clear cumulative recommendations
     setShowMobileMap(false);
+    setIsSessionRestored(true); // Mark as ready to save new session
     inputRef.current?.focus();
   };
 
@@ -261,6 +333,9 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                 <h3 className="font-semibold">AI-Powered Recommendations</h3>
                 <p className="text-sm text-white/80">
                   {allRecommendations.length > 0 ? `${allRecommendations.length} places discovered!` : 'Discover amazing places in Trento'}
+                  {isSessionRestored && messages.length > 1 && (
+                    <span className="ml-2 text-xs">💾 Session restored</span>
+                  )}
                 </p>
               </div>
             </div>

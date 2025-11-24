@@ -27,19 +27,33 @@ export async function POST(request: NextRequest) {
     
     console.log(`API: Found ${recommendations.length} recommendations`);
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       recommendations,
       count: recommendations.length,
       socialBiasEnabled: !!userId
     });
     
+    // Cache for 5 minutes - user-specific but stable for short periods
+    // Private cache (only client can cache, not CDN)
+    response.headers.set(
+      'Cache-Control', 
+      'private, max-age=300, stale-while-revalidate=60'
+    );
+    
+    return response;
+    
   } catch (error) {
     console.error('Error in recommendations API:', error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to get recommendations' },
       { status: 500 }
     );
+    
+    // Don't cache errors
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    
+    return errorResponse;
   }
 }
 

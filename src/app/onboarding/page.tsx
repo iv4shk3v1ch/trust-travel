@@ -1,41 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { OnboardingWizard } from '@/shared/components/OnboardingWizard';
-import { supabase } from '@/core/database/supabase';
-import { loadExistingProfile } from '@/core/database/newDatabase';
+import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { user, profile, loading } = useAuthContext(); // ✅ Use AuthContext
 
+  // Redirect logic
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+    if (!loading) {
+      if (!user) {
+        // Not authenticated -> redirect to login
         router.push('/login');
-        return;
+      } else if (profile) {
+        // Already has profile -> redirect to dashboard
+        router.push('/dashboard');
       }
-      
-      // Check if user already has a profile in the database
-      try {
-        const existingProfile = await loadExistingProfile();
-        if (existingProfile) {
-          // User already has a profile, redirect to dashboard
-          router.push('/dashboard');
-          return;
-        }
-      } catch {
-        // If error loading profile, assume it doesn't exist yet
-        console.log('No existing profile found, showing onboarding');
-      }
-      
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
+      // Else: user exists but no profile -> show onboarding
+    }
+  }, [loading, user, profile, router]);
 
   if (loading) {
     return (

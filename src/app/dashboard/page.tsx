@@ -1,52 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/core/database/supabase';
 import Link from 'next/link';
-import type { User } from '@supabase/supabase-js';
-import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
+import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
 import { calculateProfileCompleteness } from '@/core/services/profileScore';
 import { useInteractionTracker } from '@/core/services/interactionTracker';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<DatabaseProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile, loading } = useAuthContext(); // ✅ Use AuthContext instead of manual fetching
   const { track } = useInteractionTracker();
 
+  // Redirect if not authenticated
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error || !user) {
-          router.push('/login');
-          return;
-        }
-
-        setUser(user);
-        
-        // Check if user has a profile
-        try {
-          const existingProfile = await loadExistingProfile();
-          setProfile(existingProfile);
-        } catch {
-          // Profile doesn't exist
-          setProfile(null);
-        }
-        
-      } catch (error) {
-        console.error('Error checking user status:', error);
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkUser();
-  }, [router]);
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
 
   // Track page view
   useEffect(() => {
@@ -79,7 +50,7 @@ export default function DashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome back, {profile?.full_name || user?.user_metadata?.full_name || 'Traveler'}!
+            Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'Traveler'}!
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Ready for your next Trento adventure?
@@ -224,8 +195,8 @@ export default function DashboardPage() {
             <strong>Debug Info:</strong>
             <br />User ID: {user?.id}
             <br />User Email: {user?.email}
-            <br />Has Metadata: {Object.keys(user?.user_metadata || {}).length > 0 ? 'Yes' : 'No'}
-            <br />Metadata Keys: {Object.keys(user?.user_metadata || {}).join(', ')}
+            <br />Profile Loaded: {profile ? 'Yes' : 'No'}
+            <br />Profile Name: {profile?.full_name || 'Not set'}
           </div>
         )}
 

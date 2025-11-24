@@ -1,41 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import { getMyConnections, getUsersWhoTrustMe, disconnectFromUser } from '@/features/social/connections';
-import type { UserConnection, UserWhoTrustsMe } from '@/features/social/connections';
+import { useAuth } from '@/features/auth/AuthContext';
+import { useAllConnections, useDisconnectUser } from '@/features/social/hooks/useConnections';
 import { Button } from '@/shared/components/Button';
 import { TrustGraph } from '@/features/social/components/TrustGraph';
 import type { TrustNode, TrustLink } from '@/features/social/components/TrustGraph';
+import type { UserConnection, UserWhoTrustsMe } from '@/features/social/connections';
 
 export default function ConnectionsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [myConnections, setMyConnections] = useState<UserConnection[]>([]);
-  const [whoTrustsMe, setWhoTrustsMe] = useState<UserWhoTrustsMe[]>([]);
+  const { myConnections, whoTrustsMe, isLoading } = useAllConnections();
+  const disconnectMutation = useDisconnectUser();
   const [activeTab, setActiveTab] = useState<'connections' | 'trustees' | 'graph'>('connections');
-
-  useEffect(() => {
-    loadConnections();
-  }, []);
-
-  const loadConnections = async () => {
-    setLoading(true);
-    try {
-      const [connections, trustees] = await Promise.all([
-        getMyConnections(),
-        getUsersWhoTrustMe()
-      ]);
-      setMyConnections(connections);
-      setWhoTrustsMe(trustees);
-    } catch (error) {
-      console.error('Error loading connections:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Helper functions for graph data
   const getGraphNodes = (): TrustNode[] => {
@@ -45,9 +24,9 @@ export default function ConnectionsPage() {
     if (user) {
       nodes.push({
         id: user.id,
-        name: user.name || 'You',
-        avatar: '/default-avatar.png', // No avatar in current user schema
-        reviews: 0, // Could fetch from reviews count
+        name: user.email?.split('@')[0] || 'You', // ✅ AuthContext user doesn't have 'name'
+        avatar: '/default-avatar.png',
+        reviews: 0,
         isCurrentUser: true
       });
     }
@@ -121,18 +100,18 @@ export default function ConnectionsPage() {
   const handleDisconnect = async (userId: string) => {
     if (!confirm('Are you sure you want to disconnect from this user?')) return;
 
-    try {
-      const result = await disconnectFromUser(userId);
-      if (result.success) {
-        // Refresh connections
-        await loadConnections();
-      } else {
-        alert(result.error || 'Failed to disconnect');
-      }
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      alert('An unexpected error occurred');
-    }
+    disconnectMutation.mutate(userId, {
+      onSuccess: (result) => {
+        if (!result.success) {
+          alert(result.error || 'Failed to disconnect');
+        }
+        // Note: Cache is automatically updated by the mutation hook
+      },
+      onError: (error) => {
+        console.error('Error disconnecting:', error);
+        alert('An unexpected error occurred');
+      },
+    });
   };
 
   const getBudgetLabel = (level: string) => {
@@ -240,10 +219,13 @@ export default function ConnectionsPage() {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading your connections...</p>
+        </div>
       </div>
     );
   }

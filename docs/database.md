@@ -3,7 +3,7 @@ These things must be used for developing the app. I created standart notation an
 1. check what are the acceptable values for the variables and make them in the iterface of my app. If it says budget "low (0-10), mid (10-25) and high (25+)" then it is only like that with these values
 2. check if it has certain icon for displaying it. for example if i say "restaurant 🍽️ " then it can't be any other emoji related to restaurant
 
-this is the database schema:
+
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
@@ -74,7 +74,6 @@ CREATE TABLE public.profiles (
 CREATE TABLE public.review_experience_tags (
   review_id uuid NOT NULL,
   experience_tag_id uuid NOT NULL,
-  sentiment_score double precision DEFAULT 0.5 CHECK (sentiment_score >= 0::double precision AND sentiment_score <= 1::double precision),
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT review_experience_tags_pkey PRIMARY KEY (review_id, experience_tag_id),
   CONSTRAINT review_experience_tags_review_fkey FOREIGN KEY (review_id) REFERENCES public.reviews(id),
@@ -114,7 +113,7 @@ CREATE TABLE public.user_interactions (
   user_id uuid,
   created_at timestamp with time zone DEFAULT now(),
   place_id uuid,
-  action_type text CHECK (action_type = ANY (ARRAY['view'::text, 'save'::text, 'click'::text])),
+  action_type text CHECK (action_type = ANY (ARRAY['view'::text, 'save'::text, 'click'::text, 'like'::text, 'dislike'::text, 'hide'::text, 'share'::text, 'navigate'::text, 'call'::text, 'website'::text, 'search'::text, 'filter'::text, 'scroll_past'::text, 'hover'::text, 'quick_view'::text, 'compare'::text, 'review_start'::text, 'review_submit'::text, 'chatbot_query'::text])),
   session_id uuid,
   metadata jsonb DEFAULT '{}'::jsonb,
   CONSTRAINT user_interactions_pkey PRIMARY KEY (id),
@@ -130,8 +129,6 @@ CREATE TABLE public.user_place_preferences (
   CONSTRAINT user_place_preferences_user_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT user_place_preferences_place_type_fkey FOREIGN KEY (place_type_id) REFERENCES public.place_types(id)
 );
-
-
 
 and here are the tables and what they store:
 

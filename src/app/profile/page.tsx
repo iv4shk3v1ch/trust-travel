@@ -1,57 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadExistingProfile, DatabaseProfile } from '@/core/database/newDatabase';
-import { supabase } from '@/core/database/supabase';
+import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
+import { calculateProfileCompleteness } from '@/core/services/profileScore';
 import { Button } from '@/shared/components/Button';
-
-// Simple completion check for new schema
-function calculateProfileCompleteness(profile: DatabaseProfile): { percentage: number; isComplete: boolean; missingFields: string[] } {
-  const requiredFields: (keyof DatabaseProfile)[] = ['full_name', 'age', 'gender', 'budget', 'env_preference', 'activity_style'];
-  const missingFields: string[] = [];
-  
-  requiredFields.forEach(field => {
-    if (!profile[field]) {
-      missingFields.push(field);
-    }
-  });
-  
-  const filledCount = requiredFields.length - missingFields.length;
-  const percentage = Math.round((filledCount / requiredFields.length) * 100);
-  
-  return {
-    percentage,
-    isComplete: missingFields.length === 0,
-    missingFields
-  };
-}
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [currentProfile, setCurrentProfile] = useState<DatabaseProfile | null>(null);
+  const { user, profile: currentProfile, loading } = useAuthContext(); // ✅ Use AuthContext instead of manual fetching
 
+  // Redirect if not authenticated
   useEffect(() => {
-    const loadUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
-      try {
-        const profile = await loadExistingProfile();
-        setCurrentProfile(profile);
-      } catch (error) {
-        console.error('Error loading user profile:', error);
-      }
-      
-      setLoading(false);
-    };
-
-    loadUserData();
-  }, [router]);
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
 
   if (loading) {
     return (

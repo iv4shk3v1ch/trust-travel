@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuthGuard } from '@/features/auth/hooks/useAuthGuard';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/features/auth/AuthContext'; // ✅ Use AuthContext
 import { ReviewForm } from '@/features/reviews/components/ReviewForm';
 import { saveReview } from '@/core/database/reviewsDatabase';
 import { supabase } from '@/core/database/supabase';
@@ -9,8 +10,16 @@ import type { ReviewFormData } from '@/shared/types/review';
 import Link from 'next/link';
 
 export default function ReviewsPage() {
-  const { loading } = useAuthGuard();
+  const router = useRouter();
+  const { user, loading } = useAuth(); // ✅ Use AuthContext
   const [submitting, setSubmitting] = useState(false);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
 
   if (loading) {
     return (

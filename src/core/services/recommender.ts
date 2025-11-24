@@ -519,3 +519,4 @@ export async function getImmediateRecommendations(travelPlan: TravelPlan, curren
     return false;
   });
 }
+

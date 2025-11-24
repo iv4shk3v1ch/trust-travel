@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       ? { ...result.preferences, budget: userProfile.budget as 'low' | 'medium' | 'high' }
       : result.preferences;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       response: result.response,
       isComplete: result.isComplete || places.length > 0,
@@ -164,10 +164,16 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // No caching - conversational data must always be fresh
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    
+    return response;
+
   } catch (error) {
     console.error("❌ Error in chatbot API:", error);
     
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { 
         success: false, 
         error: "Failed to process message",
@@ -175,5 +181,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+    
+    // Don't cache errors
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    
+    return errorResponse;
   }
 }

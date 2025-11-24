@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if embedding generation fails
     });
     
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         message: 'Place added successfully',
         placeId 
@@ -40,26 +40,34 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
     
+    // Don't cache POST requests (write operations)
+    response.headers.set('Cache-Control', 'no-store');
+    
+    return response;
+    
   } catch (error) {
     console.error('Error in places API:', error);
     
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
+    const errorResponse = NextResponse.json(
+      error instanceof Error ? { error: error.message } : { error: 'Internal server error' },
       { status: 500 }
     );
+    
+    // Don't cache errors
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    
+    return errorResponse;
   }
 }
 
 export async function GET() {
-  return NextResponse.json(
+  const response = NextResponse.json(
     { message: 'Places API endpoint - use POST to add places' },
     { status: 200 }
   );
+  
+  // Cache static endpoint info for 1 hour
+  response.headers.set('Cache-Control', 'public, max-age=3600, immutable');
+  
+  return response;
 }

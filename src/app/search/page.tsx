@@ -1,252 +1,79 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/core/database/supabase';
+import { useAuth } from '@/features/auth/AuthContext';
+import { useSuggestedUsers, useUserSearch } from '@/features/social/hooks/useUserSearch';
 import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/features/social/connections';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { useInteractionTracker } from '@/core/services/interactionTracker';
+import { useEffect } from 'react';
 
 interface UserProfile {
   id: string;
   full_name: string;
   age: number;
   gender: string;
-  budget: 'low' | 'medium' | 'high';
-  activities: string[];
-  place_types: string[];
-  personality_traits: string[];
-  trip_style: 'planned' | 'mixed' | 'spontaneous';
-  travel_with: string;
+  budget: string; // 'low', 'medium', 'high'
+  env_preference: string; // 'indoor', 'outdoor', 'balanced'
+  activity_style: string; // 'relaxed', 'balanced', 'active'
+  food_restrictions: string;
 }
 
 export default function SearchPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
-  const [suggestedUsers, setSuggestedUsers] = useState<UserProfile[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const { track, searchAction } = useInteractionTracker();
+  const { track } = useInteractionTracker();
+  
+  // React Query hooks
+  const { data: suggestedUsers = [], isLoading: loadingSuggested } = useSuggestedUsers();
+  const { data: searchResults = [], isLoading: searchLoading } = useUserSearch(searchQuery);
 
+  // Redirect if not authenticated
   useEffect(() => {
-    const loadSuggestedUsers = async (userProfile: UserProfile | null) => {
-      try {
-        console.log('Loading suggested users, current user profile:', userProfile);
-        
-        // Get users with similar interests or complementary travel styles
-        const { data: users, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .neq('id', userProfile?.id || '')
-          .limit(6);
-
-        if (error) {
-          console.error('Error loading suggested users:', error);
-          setSuggestedUsers([]);
-          return;
-        }
-
-        console.log('Raw users from database:', users);
-        console.log('Loaded suggested users:', users?.length || 0);
-
-        if (users && users.length > 0 && userProfile) {
-          // Sort by similarity to current user
-          const sortedUsers = users
-            .map(user => ({
-              ...user,
-              similarity: calculateSimilarity(userProfile, user)
-            }))
-            .sort((a, b) => b.similarity - a.similarity)
-            .slice(0, 6);
-
-          setSuggestedUsers(sortedUsers);
-        } else {
-          setSuggestedUsers(users || []);
-        }
-      } catch (error) {
-        console.error('Error loading suggested users:', error);
-        setSuggestedUsers([]);
-      }
-    };
-
-    const loadData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/login');
-          return;
-        }
-
-        console.log('Current user session:', session.user.id);
-
-        // Load current user profile
-        const { data: userProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        console.log('Current user profile query result:', userProfile, profileError);
-
-        if (userProfile) {
-          setCurrentUser(userProfile);
-        } else {
-          console.log('No profile found for current user, this might be why search shows no results');
-        }
-
-        // Load suggested users (users with similar interests)
-        await loadSuggestedUsers(userProfile);
-        
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [router]);
-
-  const calculateSimilarity = (user1: UserProfile, user2: UserProfile): number => {
-    let score = 0;
-    
-    // Age similarity (closer ages get higher score)
-    const ageDiff = Math.abs(user1.age - user2.age);
-    score += Math.max(0, 20 - ageDiff); // Max 20 points for age
-    
-    // Common activities
-    const commonActivities = user1.activities.filter(activity => 
-      user2.activities.includes(activity)
-    ).length;
-    score += commonActivities * 10; // 10 points per common activity
-    
-    // Common place types
-    const commonPlaces = user1.place_types.filter(place => 
-      user2.place_types.includes(place)
-    ).length;
-    score += commonPlaces * 8; // 8 points per common place type
-    
-    // Common personality traits
-    const commonTraits = user1.personality_traits.filter(trait => 
-      user2.personality_traits.includes(trait)
-    ).length;
-    score += commonTraits * 15; // 15 points per common trait
-    
-    // Budget level compatibility
-    if (user1.budget === user2.budget) {
-      score += 25; // 25 points for same budget level
+    if (!user) {
+      router.push('/login');
     }
-    
-    // Trip style compatibility
-    if (user1.trip_style === user2.trip_style) {
-      score += 20; // 20 points for same trip style
-    }
-    
-    return score;
-  };
+  }, [user, router]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setSearchLoading(true);
-    
-    // Track search action
-    await searchAction(searchQuery, 0, {
-      page: 'user_search',
-      search_type: 'user_connections'
-    });
-    
-    try {
-      const searchTerm = searchQuery.trim().toLowerCase();
-      console.log('Searching for:', searchTerm);
-      
-      // Get all users first, then filter in JavaScript for more reliable search
-      const { data: allUsers, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', currentUser?.id || '');
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-
-      console.log('Found users:', allUsers?.length || 0);
-
-      // Filter users based on search term
-      const filteredUsers = (allUsers || []).filter(user => {
-        // Search in name
-        if (user.full_name?.toLowerCase().includes(searchTerm)) return true;
-        
-        // Search in activities
-        if (user.activities?.some((activity: string) => 
-          activity.toLowerCase().includes(searchTerm)
-        )) return true;
-        
-        // Search in place types
-        if (user.place_types?.some((place: string) => 
-          place.toLowerCase().includes(searchTerm)
-        )) return true;
-        
-        // Search in personality traits
-        if (user.personality_traits?.some((trait: string) => 
-          trait.toLowerCase().includes(searchTerm)
-        )) return true;
-        
-        // Search in trip style
-        if (user.trip_style?.toLowerCase().includes(searchTerm)) return true;
-        
-        // Search in budget level
-        if (user.budget?.toLowerCase().includes(searchTerm)) return true;
-        
-        // Search in gender
-        if (user.gender?.toLowerCase().includes(searchTerm)) return true;
-        
-        return false;
-      });
-
-      console.log('Filtered users:', filteredUsers.length);
-      setSearchResults(filteredUsers);
-      
-      // Track search results
-      await track('search', undefined, {
+  // Track search when searchResults change
+  useEffect(() => {
+    if (searchQuery && searchResults.length >= 0) {
+      track('search', undefined, {
         search_query: searchQuery,
-        results_count: filteredUsers.length,
+        results_count: searchResults.length,
         page: 'user_search'
       });
-      
-    } catch (error) {
-      console.error('Error searching users:', error);
-      setSearchResults([]);
-      // Show user-friendly error message
-      alert('Search failed. Please try again or contact support if the issue persists.');
-    } finally {
-      setSearchLoading(false);
     }
-  };
+  }, [searchResults, searchQuery, track]);
 
   const getBudgetLabel = (level: string) => {
     const labels = {
-      'low': 'Budget Explorer',
-      'medium': 'Comfort Seeker', 
-      'high': 'Luxury Traveler'
+      'low': '💰 Budget Friendly',
+      'medium': '💳 Comfort Seeker', 
+      'high': '💎 Luxury Traveler'
     };
     return labels[level as keyof typeof labels] || level;
   };
 
-  const getTripStyleLabel = (style: string) => {
+  const getActivityStyleLabel = (style: string) => {
     const labels = {
-      'planned': 'Detailed Planner',
-      'mixed': 'Flexible Explorer',
-      'spontaneous': 'Go with the Flow'
+      'relaxed': '🌅 Relaxed Pace',
+      'balanced': '⚖️ Balanced Explorer',
+      'active': '⚡ High Energy'
     };
     return labels[style as keyof typeof labels] || style;
+  };
+
+  const getEnvPreferenceLabel = (pref: string) => {
+    const labels = {
+      'indoor': '🏛️ Indoor Explorer',
+      'outdoor': '🌲 Outdoor Adventurer',
+      'balanced': '🌐 Both Indoor & Outdoor'
+    };
+    return labels[pref as keyof typeof labels] || pref;
   };
 
   const UserCard = ({ user }: { user: UserProfile }) => {
@@ -267,8 +94,8 @@ export default function SearchPage() {
           ]);
           setIsConnected(connected);
           setMutualStatus(mutual);
-        } catch (error) {
-          console.error('Error loading connection status:', error);
+        } catch {
+          // Connection status loading failed silently
         }
       };
       loadStatus();
@@ -277,32 +104,24 @@ export default function SearchPage() {
     const handleConnect = async () => {
       setConnecting(true);
       try {
-        console.log('handleConnect called for user:', user.id, 'isConnected:', isConnected);
-        
         if (isConnected) {
-          console.log('Attempting to disconnect...');
           const result = await disconnectFromUser(user.id);
           if (result.success) {
             setIsConnected(false);
             setMutualStatus(prev => ({ ...prev, iConnectedToThem: false, isMutual: false }));
           } else {
-            console.error('Disconnect failed:', result.error);
             alert(result.error || 'Failed to disconnect');
           }
         } else {
-          console.log('Attempting to connect...');
           const result = await connectToUser(user.id);
-          console.log('Connect result:', result);
           if (result.success) {
             setIsConnected(true);
             setMutualStatus(prev => ({ ...prev, iConnectedToThem: true, isMutual: prev.theyConnectedToMe }));
           } else {
-            console.error('Connect failed:', result.error);
             alert(result.error || 'Failed to connect');
           }
         }
-      } catch (error) {
-        console.error('Error handling connection:', error);
+      } catch {
         alert('An unexpected error occurred');
       } finally {
         setConnecting(false);
@@ -337,60 +156,40 @@ export default function SearchPage() {
               {user.age} years • {user.gender}
             </p>
           </div>
-          <div className="flex flex-col items-end space-y-1">
+        </div>
+
+        {/* Travel Preferences */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Budget:</span>
             <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
               {getBudgetLabel(user.budget)}
             </span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Activity Style:</span>
             <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">
-              {getTripStyleLabel(user.trip_style)}
+              {getActivityStyleLabel(user.activity_style)}
             </span>
           </div>
-        </div>
-
-        {/* Activities */}
-        <div className="mb-3">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Loves to do:
-          </h4>
-          <div className="flex flex-wrap gap-1">
-            {user.activities.slice(0, 3).map((activity) => (
-              <span key={activity} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs rounded-full">
-                {activity}
-              </span>
-            ))}
-            {user.activities.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
-                +{user.activities.length - 3} more
-              </span>
-            )}
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Environment:</span>
+            <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
+              {getEnvPreferenceLabel(user.env_preference)}
+            </span>
           </div>
-        </div>
 
-        {/* Personality Traits */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Travel personality:
-          </h4>
-          <div className="flex flex-wrap gap-1">
-            {user.personality_traits.slice(0, 2).map((trait) => (
-              <span key={trait} className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
-                {trait}
+          {user.food_restrictions && user.food_restrictions.trim() && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dietary:</span>
+              <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full">
+                {user.food_restrictions}
               </span>
-            ))}
-            {user.personality_traits.length > 2 && (
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
-                +{user.personality_traits.length - 2} more
-              </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-
-        {/* Travel With */}
-        {user.travel_with && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Usually travels: <span className="font-medium">{user.travel_with}</span>
-          </p>
-        )}
 
         {/* Connection Status */}
         {mutualStatus.theyConnectedToMe && !isConnected && (
@@ -413,7 +212,10 @@ export default function SearchPage() {
     );
   };
 
-  if (loading) {
+  // Show loading state
+  const isLoading = loadingSuggested && !suggestedUsers.length;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -446,37 +248,25 @@ export default function SearchPage() {
             <div className="flex-1">
               <Input
                 type="text"
-                placeholder="Search by name, activities, personality, travel style... (e.g., 'hiking', 'adventurous', 'planned')"
+                placeholder="Search by name, environment preference, activity style, budget..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSearch();
-                  }
-                }}
                 className="w-full"
               />
             </div>
-            <Button 
-              onClick={handleSearch}
-              disabled={searchLoading}
-              className="px-8"
-            >
-              {searchLoading ? 'Searching...' : 'Search'}
-            </Button>
+            {searchLoading && (
+              <div className="flex items-center px-4">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
           </div>
           
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="text-sm text-gray-600 dark:text-gray-400">Try searching for:</span>
-            {['hiking', 'adventurous', 'budget', 'spontaneous', 'planned', 'museums', 'beaches', 'foodie'].map((term) => (
+            {['outdoor', 'indoor', 'balanced', 'active', 'relaxed', 'budget', 'luxury'].map((term) => (
               <button
                 key={term}
-                onClick={() => {
-                  setSearchQuery(term);
-                  // Auto-search when clicking suggestion
-                  setTimeout(() => handleSearch(), 100);
-                }}
+                onClick={() => setSearchQuery(term)}
                 className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 {term}

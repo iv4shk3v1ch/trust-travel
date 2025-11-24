@@ -8,13 +8,22 @@ export async function GET() {
       { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
     ];
     
-    return NextResponse.json({ users });
+    const response = NextResponse.json({ users });
+    
+    // Cache for 1 minute - user list changes infrequently
+    // Use private cache since this could contain sensitive data
+    response.headers.set('Cache-Control', 'private, max-age=60');
+    
+    return response;
   } catch (error) {
     console.error('Users GET error:', error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to fetch users' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    return errorResponse;
   }
 }
 
@@ -32,12 +41,20 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     };
     
-    return NextResponse.json({ user: newUser }, { status: 201 });
+    const response = NextResponse.json({ user: newUser }, { status: 201 });
+    
+    // Don't cache POST requests (write operations)
+    response.headers.set('Cache-Control', 'no-store');
+    
+    return response;
   } catch (error) {
     console.error('Users POST error:', error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }
     );
+    
+    errorResponse.headers.set('Cache-Control', 'no-store');
+    return errorResponse;
   }
 }

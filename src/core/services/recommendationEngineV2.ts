@@ -19,6 +19,10 @@
 import { supabaseAdmin } from '../database/supabase';
 import type { ExperienceTag, PlaceCategory } from '@/shared/utils/dataStandards';
 import { userBehaviorService, type UserBehaviorProfile } from './userBehaviorService';
+import { 
+  getCachedRecommendations, 
+  setCachedRecommendations 
+} from './recommendationCache';
 
 type IntentType = 'goal-oriented' | 'discovery' | 'informational';
 
@@ -181,6 +185,13 @@ export async function getIntentBasedRecommendations(
   limit: number = 20
 ): Promise<RecommendedPlace[]> {
   try {
+    // ✨ CACHE CHECK: Try to get cached results first
+    const cached = getCachedRecommendations(context);
+    if (cached) {
+      console.log(`⚡ Returning ${cached.length} cached recommendations`);
+      return cached.slice(0, limit); // Apply limit to cached results
+    }
+    
     console.log(`🎯 Getting ${context.intent} recommendations (SQL-optimized)`);
 
     // Normalize location name
@@ -583,5 +594,10 @@ async function getRecommendationsSimplified(
   // Sort by final_ranking_score (what UI expects)
   processed.sort((a: RecommendedPlace, b: RecommendedPlace) => b.final_ranking_score - a.final_ranking_score);
 
-  return processed.slice(0, limit);
+  const results = processed.slice(0, limit);
+  
+  // ✨ CACHE SET: Store results for future queries
+  setCachedRecommendations(context, results);
+  
+  return results;
 }

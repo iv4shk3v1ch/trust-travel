@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { invalidateUserCache } from '../services/recommendationCache';
 
 // Updated to match actual database schema with extended profile fields
 export interface DatabaseProfile {
@@ -10,7 +11,7 @@ export interface DatabaseProfile {
   activities?: string[];
   place_types?: string[];
   food_preferences?: string[];
-  food_restrictions?: string; // Changed from string[] to string (matches DB schema)
+  food_restrictions?: string | null; // Changed to match AuthContext (null instead of undefined)
   personality_traits?: string[];
   trip_style?: 'planned' | 'mixed' | 'spontaneous';
   spending_style?: string | null;
@@ -93,6 +94,13 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
 
     console.log('✅ Profile saved successfully!');
     console.log('📋 Saved data:', JSON.stringify(data, null, 2));
+
+    // ✨ Invalidate recommendation cache for this user
+    // Profile changes (budget, preferences, etc.) affect recommendation results
+    const invalidatedCount = invalidateUserCache(user.id);
+    if (invalidatedCount > 0) {
+      console.log(`🔄 Invalidated ${invalidatedCount} cached recommendations due to profile update`);
+    }
 
     // Verify the save worked
     const { data: verifyData, error: verifyError } = await supabase

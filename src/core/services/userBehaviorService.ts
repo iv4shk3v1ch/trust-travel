@@ -303,3 +303,4 @@ class UserBehaviorService {
 }
 
 export const userBehaviorService = new UserBehaviorService();
+

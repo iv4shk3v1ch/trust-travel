@@ -55,8 +55,6 @@ export async function findSimilarPlaces(
       city
     } = options;
 
-    console.log(`🔍 Searching for similar places (limit: ${limit}, threshold: ${threshold})`);
-
     // Fetch places with embeddings
     let query = supabase
       .from('places')
@@ -408,3 +406,4 @@ export async function hybridPlaceSearch(
     return [];
   }
 }
+

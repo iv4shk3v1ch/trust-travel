@@ -14,6 +14,13 @@ interface DatabaseProfile {
   activity_style: 'active' | 'relaxing' | 'balanced' | null
   food_restrictions: string | null
   updated_at: string
+  // Optional extended fields
+  activities?: string[]
+  place_types?: string[]
+  food_preferences?: string[]
+  personality_traits?: string[]
+  trip_style?: 'planned' | 'mixed' | 'spontaneous'
+  spending_style?: string | null
 }
 
 interface AuthContextType {

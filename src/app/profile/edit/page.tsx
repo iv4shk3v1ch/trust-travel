@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadExistingProfile, DatabaseProfile, saveNewProfile } from '@/core/database/newDatabase';
-import { supabase } from '@/core/database/supabase';
+import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
+import { DatabaseProfile, saveNewProfile } from '@/core/database/newDatabase';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 
 export default function ProfileEditPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { user, profile: existingProfile, loading: authLoading, refreshProfile } = useAuthContext(); // ✅ Use AuthContext
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   
@@ -23,37 +23,27 @@ export default function ProfileEditPage() {
     food_restrictions: ''
   });
 
+  // Redirect if not authenticated
   useEffect(() => {
-    const loadUserData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [authLoading, user, router]);
 
-      try {
-        const profile = await loadExistingProfile();
-        if (profile) {
-          setFormData({
-            full_name: profile.full_name || '',
-            age: profile.age?.toString() || '',
-            gender: profile.gender || '',
-            budget: profile.budget || 'medium',
-            env_preference: profile.env_preference || '',
-            activity_style: profile.activity_style || '',
-            food_restrictions: profile.food_restrictions || '' // Already a string in DB
-          });
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        setError('Failed to load profile');
-      }
-      
-      setLoading(false);
-    };
-
-    loadUserData();
-  }, [router]);
+  // Load profile data when available
+  useEffect(() => {
+    if (existingProfile) {
+      setFormData({
+        full_name: existingProfile.full_name || '',
+        age: existingProfile.age?.toString() || '',
+        gender: existingProfile.gender || '',
+        budget: existingProfile.budget || 'medium',
+        env_preference: existingProfile.env_preference || '',
+        activity_style: existingProfile.activity_style || '',
+        food_restrictions: existingProfile.food_restrictions || ''
+      });
+    }
+  }, [existingProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +69,10 @@ export default function ProfileEditPage() {
       };
 
       await saveNewProfile(profileData);
+      
+      // Refresh profile in AuthContext
+      await refreshProfile();
+      
       router.push('/profile');
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -87,12 +81,12 @@ export default function ProfileEditPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading profile...</p>
         </div>
       </div>
     );
