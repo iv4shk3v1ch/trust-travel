@@ -3,111 +3,80 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/features/auth/AuthContext';
+import { ProfileDrawer } from './ProfileDrawer';
 
 export const Header: React.FC = () => {
-  const { user, loading, signOut } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, profile, loading } = useAuth();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
-    await signOut()
+  // Get user initials for avatar
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return user?.email?.[0]?.toUpperCase() || 'U';
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-indigo-600">
-              TrustTravel
+    <>
+      <header className="bg-white shadow-sm sticky top-0 z-30">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link href="/explore" className="flex items-center gap-2">
+              <span className="text-2xl">✈️</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                TrustTravel
+              </span>
             </Link>
-          </div>
-          
-          <nav className="hidden md:flex space-x-8">
-            <Link 
-              href="/" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Home
-            </Link>
-            {!loading && user && (
-              <>
-                <Link 
-                  href="/dashboard" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+
+            {/* Right side */}
+            <div className="flex items-center gap-4">
+              {loading ? (
+                // Loading skeleton
+                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
+              ) : user ? (
+                // User avatar button
+                <button
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="flex items-center gap-3 hover:bg-gray-50 rounded-full p-1 pr-3 transition-colors"
                 >
-                  Dashboard
-                </Link>
-                <Link 
-                  href="/profile" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Profile
-                </Link>
-              </>
-            )}
-            <Link 
-              href="/chatbot" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              🤖 AI Assistant
-            </Link>
-            <Link 
-              href="/destinations" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Destinations
-            </Link>
-            <Link 
-              href="/about" 
-              className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              About
-            </Link>
-          </nav>
-          
-          <div className="flex items-center space-x-4">
-            {loading ? (
-              // Loading state - show minimal UI
-              <div className="flex items-center space-x-4">
-                <div className="w-20 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              </div>
-            ) : user ? (
-              // Logged in user
-              <div className="flex items-center space-x-4">
-                <button 
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isLoggingOut 
-                      ? 'bg-gray-400 cursor-not-allowed text-gray-200' 
-                      : 'bg-gray-600 hover:bg-gray-700 text-white'
-                  }`}
-                >
-                  {isLoggingOut ? 'Logging out...' : 'Logout'}
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-md">
+                    {getInitials()}
+                  </div>
+                  <span className="hidden md:block font-medium text-gray-700">
+                    {profile?.full_name?.split(' ')[0] || 'Profile'}
+                  </span>
                 </button>
-              </div>
-            ) : (
-              // Not logged in
-              <>
-                <Link 
-                  href="/login" 
-                  className="text-gray-700 dark:text-gray-300 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link 
-                  href="/signup" 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
+              ) : (
+                // Not logged in - show login/signup
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/login"
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Profile Drawer */}
+      <ProfileDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+    </>
   );
 };

@@ -329,7 +329,7 @@ async function getRecommendationsSimplified(
 
   // Apply filters
   if (normalizedLocation) {
-    query = query.ilike('city', normalizedLocation); // Use case-insensitive match
+    query = query.eq('city', normalizedLocation); // Exact match (case-sensitive)
   }
 
   if (placeTypeIds.length > 0) {

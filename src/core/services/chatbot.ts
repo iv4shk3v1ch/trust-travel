@@ -369,8 +369,7 @@ export class ChatbotService {
       intent: 'goal-oriented', // Fallback always assumes user wants recommendations
       categories: categories,
       experienceTags: experienceTags,
-      destination: 'trento-city',
-      budget: 'medium',
+      destination: 'Trento',
       summary: `Based on your request: ${userMessage.substring(0, 80)}...`
     };
   }

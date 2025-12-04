@@ -9,13 +9,11 @@
     "lint": "next lint",
     "import:places": "tsx scripts/import-tripadvisor-places.ts",
     "import:reviews": "tsx scripts/import-tripadvisor-reviews.ts",
-    "add:tags": "tsx scripts/add-review-tags-with-ai.ts",
-    "debug:reviews": "tsx scripts/debug-reviews.ts",
-    "check:coverage": "tsx scripts/check-review-coverage.ts",
-    "estimate:api": "tsx scripts/estimate-api-usage.ts",
-    "fix:coordinates": "tsx scripts/fix-coordinates.ts"
+    "generate:reviews": "tsx scripts/generate-synthetic-data.ts",
+    "add:places": "tsx scripts/add-important-places.ts"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.53.1",
     "@tanstack/react-query": "^5.90.10",
