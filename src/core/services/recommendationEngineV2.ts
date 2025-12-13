@@ -36,6 +36,10 @@ export interface RecommendationContext {
   timeContext?: 'now' | 'morning' | 'afternoon' | 'evening' | 'night' | 'weekend';
   environment?: 'indoor' | 'outdoor' | 'mixed';
   dietaryRestrictions?: string[];
+  // Disable automatic behavioral category filtering (for explore all)
+  disableBehavioralCategoryFilter?: boolean;
+  // Disable automatic behavioral budget filtering (for explore all)
+  disableBehavioralBudgetFilter?: boolean;
   // User profile preferences for matching
   userProfile?: {
     env_preference?: string | null;
@@ -204,13 +208,15 @@ export async function getIntentBasedRecommendations(
       console.log('🧠 Fetching user behavioral profile...');
       userBehavior = await userBehaviorService.getUserBehaviorProfile(context.userId);
       
-      // Enhance context with behavioral insights
-      if (userBehavior.preferredPlaceTypes.length > 0) {
+      // Enhance context with behavioral insights (unless disabled)
+      if (userBehavior.preferredPlaceTypes.length > 0 && !context.disableBehavioralCategoryFilter) {
         console.log(`🎯 User prefers: ${userBehavior.preferredPlaceTypes.join(', ')}`);
         // Merge user's preferred types with AI-suggested categories
         context.categories = context.categories 
           ? [...new Set([...context.categories, ...userBehavior.preferredPlaceTypes])]
           : userBehavior.preferredPlaceTypes;
+      } else if (context.disableBehavioralCategoryFilter) {
+        console.log('🌍 Behavioral category filter disabled - showing all categories');
       }
       
       if (userBehavior.preferredTags.length > 0) {
@@ -222,9 +228,11 @@ export async function getIntentBasedRecommendations(
       }
       
       // Use behavioral budget if no budget specified
-      if (!context.budget && userBehavior.budgetBehavior) {
+      if (!context.budget && userBehavior.budgetBehavior && !context.disableBehavioralBudgetFilter) {
         console.log(`💰 Using user's budget behavior: ${userBehavior.budgetBehavior}`);
         context.budget = userBehavior.budgetBehavior;
+      } else if (context.disableBehavioralBudgetFilter) {
+        console.log('💸 Behavioral budget filter disabled - showing all price levels');
       }
     }
 
@@ -344,7 +352,8 @@ async function getRecommendationsSimplified(
     query = query.eq('indoor_outdoor', context.environment);
   }
 
-  const { data: places, error } = await query.limit(50);
+  // Fetch ALL places (no limit) - we have a fixed dataset, so rank everything
+  const { data: places, error } = await query;
 
   console.log('📊 Query result:', {
     error: error,

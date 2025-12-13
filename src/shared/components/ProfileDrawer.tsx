@@ -103,50 +103,12 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose })
               </Link>
 
               <Link
-                href="/explore"
-                onClick={onClose}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-2xl">🗺️</span>
-                <span className="font-medium text-gray-700">Explore</span>
-              </Link>
-
-              <Link
                 href="/connections"
                 onClick={onClose}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <span className="text-2xl">👥</span>
+                <span className="text-2xl">🤝</span>
                 <span className="font-medium text-gray-700">Connections</span>
-              </Link>
-
-              <Link
-                href="/itinerary"
-                onClick={onClose}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-2xl">📋</span>
-                <span className="font-medium text-gray-700">Itineraries</span>
-              </Link>
-
-              <Link
-                href="/reviews"
-                onClick={onClose}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-2xl">⭐</span>
-                <span className="font-medium text-gray-700">Reviews</span>
-              </Link>
-
-              <div className="border-t border-gray-200 my-4" />
-
-              <Link
-                href="/chatbot"
-                onClick={onClose}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-2xl">🤖</span>
-                <span className="font-medium text-gray-700">AI Assistant</span>
               </Link>
 
               <Link

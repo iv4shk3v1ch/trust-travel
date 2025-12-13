@@ -29,13 +29,12 @@ export async function middleware(request: NextRequest) {
 
   // Protected routes that require authentication
   const protectedRoutes = [
-    '/dashboard',
     '/profile',
     '/onboarding',
-    '/plan-trip',
     '/reviews',
     '/connections',
-    '/add-place'
+    '/add-place',
+    '/explore'
   ]
 
   // Check if the current path is protected
@@ -54,40 +53,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // For onboarding route, allow access regardless of profile completion
-    if (request.nextUrl.pathname.startsWith('/onboarding')) {
-      return supabaseResponse
-    }
-
-    // For other protected routes, check if user has completed onboarding
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    // If no profile exists or incomplete, redirect to onboarding
-    // Handle the case where profile doesn't exist (error or null data)
-    const profileMissing = profileError || !profile
-    const profileIncomplete = profile && (
-      !profile.full_name || 
-      !profile.age || 
-      !profile.gender ||
-      !profile.activities || 
-      profile.activities.length === 0
-    )
-    
-    if (profileMissing || profileIncomplete) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
+    // Allow access to all protected routes - no profile completeness checks needed
+    return supabaseResponse
   }
 
-  // For login/signup pages, redirect to dashboard if already authenticated
+  // For login/signup pages, redirect to explore if already authenticated
   if (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup') {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (user) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(new URL('/explore', request.url))
     }
   }
 

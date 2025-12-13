@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 
 export default function Home() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [selectedTravelType, setSelectedTravelType] = useState<string>('');
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [animationStep, setAnimationStep] = useState(0);
@@ -62,18 +62,13 @@ export default function Home() {
     }
   }), []);
 
-  // Redirect authenticated users
+  // Redirect authenticated users to explore
   useEffect(() => {
     if (!loading && user) {
-      if (profile) {
-        console.log('User authenticated with profile, redirecting to dashboard');
-        router.push('/dashboard');
-      } else {
-        console.log('User authenticated without profile, redirecting to onboarding');
-        router.push('/onboarding');
-      }
+      console.log('User authenticated, redirecting to explore');
+      router.push('/explore');
     }
-  }, [user, profile, loading, router]);
+  }, [user, loading, router]);
 
   useEffect(() => {
     if (showRecommendations && selectedTravelType && recommendations[selectedTravelType as keyof typeof recommendations]) {

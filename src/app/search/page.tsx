@@ -7,6 +7,8 @@ import { useSuggestedUsers, useUserSearch } from '@/features/social/hooks/useUse
 import { connectToUser, disconnectFromUser, isUserConnected, isMutualConnection } from '@/features/social/connections';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { Header } from '@/shared/components/Header';
+import { Footer } from '@/shared/components/Footer';
 import { useInteractionTracker } from '@/core/services/interactionTracker';
 import { useEffect } from 'react';
 
@@ -144,47 +146,47 @@ export default function SearchPage() {
     };
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-base font-semibold text-gray-900">
               {user.full_name}
               {mutualStatus.isMutual && <span className="ml-2 text-green-500">🤝</span>}
               {mutualStatus.theyConnectedToMe && !mutualStatus.iConnectedToThem && <span className="ml-2 text-blue-500">→</span>}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600">
               {user.age} years • {user.gender}
             </p>
           </div>
         </div>
 
         {/* Travel Preferences */}
-        <div className="space-y-2 mb-4">
+        <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Budget:</span>
-            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
+            <span className="text-sm font-medium text-gray-700">Budget:</span>
+            <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
               {getBudgetLabel(user.budget)}
             </span>
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Activity Style:</span>
-            <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full">
+            <span className="text-sm font-medium text-gray-700">Activity Style:</span>
+            <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full">
               {getActivityStyleLabel(user.activity_style)}
             </span>
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Environment:</span>
-            <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
+            <span className="text-sm font-medium text-gray-700">Environment:</span>
+            <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">
               {getEnvPreferenceLabel(user.env_preference)}
             </span>
           </div>
 
           {user.food_restrictions && user.food_restrictions.trim() && (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dietary:</span>
-              <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full">
+              <span className="text-sm font-medium text-gray-700">Dietary:</span>
+              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full">
                 {user.food_restrictions}
               </span>
             </div>
@@ -193,8 +195,8 @@ export default function SearchPage() {
 
         {/* Connection Status */}
         {mutualStatus.theyConnectedToMe && !isConnected && (
-          <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
+          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-700">
               💙 This person has connected with you!
             </p>
           </div>
@@ -217,106 +219,116 @@ export default function SearchPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Find Travel Companions</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+    <>
+      <Header />
+      <div className="min-h-screen bg-gray-50 py-6">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Back Button */}
+          <button 
+            onClick={() => router.push('/explore')}
+            className="flex items-center text-gray-600 hover:text-blue-600 transition-colors mb-6"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Find Travel Companions</h1>
+            <p className="text-gray-600 mt-1">
               Connect with like-minded travelers who share your interests and style
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => router.push('/dashboard')}
-          >
-            ← Back to Dashboard
-          </Button>
-        </div>
 
-        {/* Search Bar */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Input
-                type="text"
-                placeholder="Search by name, environment preference, activity style, budget..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            {searchLoading && (
-              <div className="flex items-center px-4">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+          {/* Search Bar */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="flex space-x-3">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search by name, environment preference, activity style, budget..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
               </div>
-            )}
+              {searchLoading && (
+                <div className="flex items-center px-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="text-sm text-gray-600">Try searching for:</span>
+              {['outdoor', 'indoor', 'balanced', 'active', 'relaxed', 'budget', 'luxury'].map((term) => (
+                <button
+                  key={term}
+                  onClick={() => setSearchQuery(term)}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
           </div>
-          
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Try searching for:</span>
-            {['outdoor', 'indoor', 'balanced', 'active', 'relaxed', 'budget', 'luxury'].map((term) => (
-              <button
-                key={term}
-                onClick={() => setSearchQuery(term)}
-                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                {term}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Search Results */}
-        {searchQuery && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              Search Results ({searchResults.length})
+          {/* Search Results */}
+          {searchQuery && (
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Search Results ({searchResults.length})
+              </h2>
+              {searchResults.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {searchResults.map((user) => (
+                    <UserCard key={user.id} user={user} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">
+                    No travelers found matching &ldquo;{searchQuery}&rdquo;. Try different keywords!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Suggested Users */}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              {searchQuery ? 'More Travelers You Might Like' : 'Travelers You Might Connect With'}
             </h2>
-            {searchResults.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {searchResults.map((user) => (
+            {suggestedUsers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {suggestedUsers.map((user) => (
                   <UserCard key={user.id} user={user} />
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-600 dark:text-gray-400">
-                  No travelers found matching &ldquo;{searchQuery}&rdquo;. Try different keywords!
+                <p className="text-gray-600">
+                  No other travelers found yet. Be the first to complete your profile!
                 </p>
               </div>
             )}
           </div>
-        )}
-
-        {/* Suggested Users */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            {searchQuery ? 'More Travelers You Might Like' : 'Travelers You Might Connect With'}
-          </h2>
-          {suggestedUsers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {suggestedUsers.map((user) => (
-                <UserCard key={user.id} user={user} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600 dark:text-gray-400">
-                No other travelers found yet. Be the first to complete your profile!
-              </p>
-            </div>
-          )}
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }

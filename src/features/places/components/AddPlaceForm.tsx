@@ -161,31 +161,31 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-400">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
 
       {/* Basic Information */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
           Basic Information
         </h3>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Place Name <span className="text-red-500">*</span>
             </label>
             <Input
@@ -198,7 +198,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Place Type <span className="text-red-500">*</span>
             </label>
             
@@ -215,14 +215,14 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
                   }
                 }}
                 onFocus={() => setShowDropdown(true)}
-                placeholder="Search for place type... (e.g., Restaurant, Museum, Park)"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Search for place type... (e.g., Restaurant, Museum)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 required
               />
               
               {/* Dropdown list */}
               {showDropdown && filteredPlaceTypes.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {filteredPlaceTypes.map(type => (
                     <button
                       key={type.id}
@@ -232,15 +232,15 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
                         setSearchTerm('');
                         setShowDropdown(false);
                       }}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 ${
-                        formData.place_type_id === type.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''
+                      className={`w-full text-left px-3 py-2 hover:bg-gray-100 text-gray-900 text-sm ${
+                        formData.place_type_id === type.id ? 'bg-blue-50' : ''
                       }`}
                     >
                       <span className="font-medium">
                         {type.icon && `${type.icon} `}{type.name}
                       </span>
                       {type.description && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        <span className="text-xs text-gray-500 ml-2">
                           - {type.description}
                         </span>
                       )}
@@ -259,7 +259,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
             </div>
             
             {placeTypes.length === 0 && !loading && (
-              <p className="mt-1 text-sm text-red-600">No place types found. Please check your database.</p>
+              <p className="mt-1 text-xs text-red-600">No place types found. Please check your database.</p>
             )}
             {selectedPlaceType && (
               <p className="mt-1 text-xs text-gray-500">
@@ -274,30 +274,30 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Tell us about this place..."
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white resize-none"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
             />
           </div>
         </div>
       </div>
 
       {/* Location */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
           Location
         </h3>
         
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 City
               </label>
               <Input
@@ -309,7 +309,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Country
               </label>
               <Input
@@ -322,7 +322,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Address
             </label>
             <Input
@@ -338,15 +338,15 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
         </div>
       </div>
 
-      {/* Contact & Details */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      {/* Contact & Details - Make it 2 columns on larger screens */}
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
           Contact & Details
         </h3>
         
-        <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Phone
             </label>
             <Input
@@ -358,7 +358,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Website
             </label>
             <Input
@@ -369,8 +369,8 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Working Hours
             </label>
             <Input
@@ -384,20 +384,20 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
       </div>
 
       {/* Attributes */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
           Attributes
         </h3>
         
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Price Level
             </label>
             <select
               value={formData.price_level || ''}
               onChange={(e) => setFormData({ ...formData, price_level: e.target.value as 'low' | 'medium' | 'high' | undefined })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="">Not specified</option>
               {PRICE_LEVELS.map(level => (
@@ -409,23 +409,23 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Indoor/Outdoor
             </label>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {LOCATION_TYPES.map(type => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setFormData({ ...formData, indoor_outdoor: type.value })}
-                  className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
+                  className={`px-3 py-2 rounded-lg border-2 transition-all text-sm ${
                     formData.indoor_outdoor === type.value
-                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 text-gray-700 dark:text-gray-300'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 hover:border-gray-400 text-gray-700'
                   }`}
                 >
-                  <div className="text-2xl mb-1">{type.icon}</div>
-                  <div className="text-sm font-medium">{type.label}</div>
+                  <div className="text-xl mb-0.5">{type.icon}</div>
+                  <div className="text-xs font-medium">{type.label}</div>
                 </button>
               ))}
             </div>
@@ -434,8 +434,8 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
       </div>
 
       {/* Photos */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-3">
           Photos
         </h3>
         
@@ -445,13 +445,13 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
             accept="image/*"
             multiple
             onChange={handleFileChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
           />
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-500">
             You can select multiple photos (JPG, PNG, WebP)
           </p>
           {formData.photos && formData.photos.length > 0 && (
-            <p className="mt-2 text-sm text-indigo-600 dark:text-indigo-400">
+            <p className="mt-1 text-xs text-blue-600">
               {formData.photos.length} photo(s) selected
             </p>
           )}
@@ -459,8 +459,8 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
-        <Button type="submit" disabled={submitting} className="flex-1">
+      <div className="flex gap-3 pt-2">
+        <Button type="submit" disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-700">
           {submitting ? 'Adding Place...' : 'Add Place'}
         </Button>
         {onCancel && (
@@ -468,7 +468,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
             type="button"
             onClick={onCancel}
             disabled={submitting}
-            className="flex-1 px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm font-medium"
           >
             Cancel
           </button>

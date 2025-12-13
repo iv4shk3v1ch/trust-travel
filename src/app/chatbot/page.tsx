@@ -51,11 +51,11 @@ export default function ChatbotPage() {
           </div>
           <Button 
             variant="outline" 
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/explore')}
             className="flex items-center space-x-2 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all duration-200"
           >
             <span>←</span>
-            <span>Back to Dashboard</span>
+            <span>Back to Explore</span>
           </Button>
         </div>
 

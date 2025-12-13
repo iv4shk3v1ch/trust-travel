@@ -41,12 +41,14 @@ export async function GET(request: NextRequest) {
     // Build context based on section
     switch (section) {
       case 'for-you':
-        // General personalized recommendations
+        // General personalized recommendations - show ALL categories and budgets
         context = {
           intent: 'discovery',
           userId: user.id,
           location: 'Trento',
           userProfile: profile || undefined,
+          disableBehavioralCategoryFilter: true, // Show all categories
+          disableBehavioralBudgetFilter: true, // Show all price levels
         };
         break;
 
@@ -120,8 +122,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recommendations using existing engine
+    // Request 100 places (entire dataset) - the engine will rank all and cache results
     console.log(`📍 Fetching ${section} recommendations for user ${user.id}`);
-    let places = await getIntentBasedRecommendations(context, 30);
+    let places = await getIntentBasedRecommendations(context, 100);
 
     // Post-process for specific sections
     if (section === 'hidden-gems') {

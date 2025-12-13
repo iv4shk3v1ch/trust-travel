@@ -31,12 +31,6 @@ export default function ExploreMap({ places, selectedPlace, onPlaceClick }: Expl
   const [mapReady, setMapReady] = useState(false);
   const initialBoundsRef = useRef<L.LatLngBounds | null>(null);
 
-  // Recenter map to show all places
-  const handleRecenter = () => {
-    if (!mapRef.current || !initialBoundsRef.current) return;
-    mapRef.current.fitBounds(initialBoundsRef.current, { padding: [50, 50], animate: true });
-  };
-
   // Initialize map
   useEffect(() => {
     if (typeof window === 'undefined' || mapRef.current) return;
@@ -75,70 +69,117 @@ export default function ExploreMap({ places, selectedPlace, onPlaceClick }: Expl
     // Add new markers
     const bounds: L.LatLngTuple[] = [];
 
+    // Group places by coordinates to detect duplicates
+    const coordGroups = new Map<string, RecommendedPlace[]>();
+    places.forEach(place => {
+      if (!place.latitude || !place.longitude) return;
+      const coordKey = `${place.latitude.toFixed(6)},${place.longitude.toFixed(6)}`;
+      if (!coordGroups.has(coordKey)) {
+        coordGroups.set(coordKey, []);
+      }
+      coordGroups.get(coordKey)!.push(place);
+    });
+
+    // Create markers with offset for duplicates
     places.forEach(place => {
       if (!place.latitude || !place.longitude) return;
 
-      const latLng: L.LatLngTuple = [place.latitude, place.longitude];
+      const coordKey = `${place.latitude.toFixed(6)},${place.longitude.toFixed(6)}`;
+      const group = coordGroups.get(coordKey)!;
+      const indexInGroup = group.findIndex(p => p.id === place.id);
+      
+      let lat = place.latitude;
+      let lng = place.longitude;
+
+      // If multiple places share coordinates, offset them in a circle pattern
+      if (group.length > 1) {
+        const offsetDistance = 0.0003; // ~30 meters
+        const angle = (indexInGroup / group.length) * 2 * Math.PI;
+        lat += offsetDistance * Math.cos(angle);
+        lng += offsetDistance * Math.sin(angle);
+      }
+
+      const latLng: L.LatLngTuple = [lat, lng];
       bounds.push(latLng);
 
-      // Custom icon based on place category and match score
-      const isSelected = selectedPlace?.id === place.id;
-      const iconHtml = getCategoryIcon(place.category, place.final_score, isSelected);
+      // Create marker with default icon (will be updated by selection effect)
+      const iconHtml = getCategoryIcon(place.category, place.final_score, false);
       const icon = L.divIcon({
         html: iconHtml,
         className: 'custom-marker',
-        iconSize: isSelected ? [50, 50] : [40, 40],
-        iconAnchor: isSelected ? [25, 50] : [20, 40],
-        popupAnchor: [0, isSelected ? -50 : -40],
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
       });
 
       const marker = L.marker(latLng, { icon })
         .addTo(map)
         .on('click', () => onPlaceClick(place));
 
-      // Enhanced popup with match score
-      // Enhanced popup with compact design
-      const matchBadge = place.final_score ? `
-        <span class="inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1.5 py-0.5 rounded text-xs font-bold ml-auto">
-          ${(place.final_score * 100).toFixed(0)}%
-        </span>
-      ` : '';
-
-      marker.bindPopup(`
-        <div class="p-1.5 max-w-[180px]">
-          <div class="flex items-start justify-between gap-1 mb-1">
-            <h3 class="font-semibold text-sm leading-tight">${place.name}</h3>
-            ${matchBadge}
-          </div>
-          <p class="text-xs text-gray-500 mb-1.5 capitalize leading-tight">${place.category.replace(/-/g, ' ')}</p>
-          <div class="flex items-center gap-1 text-xs">
-            <span class="text-yellow-500">⭐</span>
-            <span class="font-semibold">${place.average_rating.toFixed(1)}</span>
-            <span class="text-gray-400">(${place.review_count})</span>
-          </div>
-        </div>
-      `);
-
       markers.set(place.id, marker);
     });
 
-    // Fit map to show all markers
-    if (bounds.length > 0) {
+    // Only fit map to show all markers if no place is selected (initial load or filter change)
+    if (bounds.length > 0 && !selectedPlace) {
       const latLngBounds = L.latLngBounds(bounds);
       initialBoundsRef.current = latLngBounds;
       map.fitBounds(latLngBounds, { padding: [50, 50] });
+    } else if (bounds.length > 0 && !initialBoundsRef.current) {
+      // Store initial bounds even if a place is selected
+      const latLngBounds = L.latLngBounds(bounds);
+      initialBoundsRef.current = latLngBounds;
     }
-  }, [places, mapReady, onPlaceClick, selectedPlace?.id]);
+  }, [places, mapReady, onPlaceClick, selectedPlace]);
+
+  // Update marker icons when selection changes (without recreating markers)
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+
+    const markers = markersRef.current;
+
+    places.forEach(place => {
+      const marker = markers.get(place.id);
+      if (!marker) return;
+
+      const isSelected = selectedPlace?.id === place.id;
+      
+      // Update icon
+      const iconHtml = getCategoryIcon(place.category, place.final_score, isSelected);
+      const icon = L.divIcon({
+        html: iconHtml,
+        className: 'custom-marker',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
+      });
+      
+      marker.setIcon(icon);
+    });
+  }, [places, mapReady, selectedPlace]);
 
   // Highlight selected place
   useEffect(() => {
     if (!mapRef.current || !selectedPlace) return;
 
     const marker = markersRef.current.get(selectedPlace.id);
-    if (marker) {
-      marker.openPopup();
-      if (selectedPlace.latitude && selectedPlace.longitude) {
-        mapRef.current.setView([selectedPlace.latitude, selectedPlace.longitude], 15, {
+    if (marker && selectedPlace.latitude && selectedPlace.longitude) {
+      const map = mapRef.current;
+      const currentZoom = map.getZoom();
+      const targetLatLng: L.LatLngTuple = [selectedPlace.latitude, selectedPlace.longitude];
+      
+      // Check if the selected place is already visible in the current view
+      const bounds = map.getBounds();
+      const placeLatLng = L.latLng(targetLatLng);
+      
+      if (bounds.contains(placeLatLng) && currentZoom >= 13) {
+        // Place is already visible and zoom is reasonable - just pan smoothly without changing zoom
+        map.panTo(targetLatLng, {
+          animate: true,
+          duration: 0.5,
+        });
+      } else {
+        // Place is not visible or zoom is too far out - zoom in to see it
+        map.setView(targetLatLng, Math.max(currentZoom, 15), {
           animate: true,
         });
       }
@@ -148,52 +189,6 @@ export default function ExploreMap({ places, selectedPlace, onPlaceClick }: Expl
   return (
     <div className="relative w-full h-full">
       <div id="explore-map" className="w-full h-full" />
-      
-      {/* Map Controls - Recenter only (OpenStreetMap provides default zoom controls) */}
-      <div className="absolute top-4 left-4 z-[1000]">
-        <button
-          onClick={handleRecenter}
-          className="bg-white hover:bg-gray-100 rounded-lg shadow-lg p-2 transition"
-          title="Recenter map"
-        >
-          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Legend */}
-      <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-[1000] max-w-xs">
-        <h4 className="font-semibold text-sm mb-2">Match Score Colors</h4>
-        <div className="space-y-1.5 text-xs mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full border-2 border-green-500"></div>
-            <span>80%+ Excellent Match</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full border-2 border-purple-600"></div>
-            <span>65-79% Great Match</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full border-2 border-orange-500"></div>
-            <span>50-64% Good Match</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full border-2 border-gray-500"></div>
-            <span>&lt;50% Okay Match</span>
-          </div>
-        </div>
-        <div className="border-t pt-2 text-xs text-gray-600">
-          Click markers for details
-        </div>
-      </div>
-
-      {/* Place count */}
-      <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg px-4 py-2 z-[1000]">
-        <p className="text-sm font-medium text-gray-700">
-          📍 {places.length} {places.length === 1 ? 'place' : 'places'} on map
-        </p>
-      </div>
     </div>
   );
 }
@@ -280,22 +275,30 @@ function getCategoryIcon(category: string, finalScore?: number, isSelected?: boo
     'local-festival-area': '🎉',
   };
 
-  // Determine border color based on match score
+  // Determine colors based on match score or selection
+  let backgroundColor = 'white';
   let borderColor = '#2563eb'; // Default blue
-  if (finalScore !== undefined) {
+  let zIndex = '1';
+  
+  if (isSelected) {
+    backgroundColor = '#ef4444'; // RED background for selected place
+    borderColor = '#dc2626'; // Darker red border
+    zIndex = '1000'; // Bring to front above all other markers
+  } else if (finalScore !== undefined) {
     if (finalScore >= 0.8) borderColor = '#10b981'; // Green for excellent match
     else if (finalScore >= 0.65) borderColor = '#8b5cf6'; // Purple for great match
     else if (finalScore >= 0.5) borderColor = '#f59e0b'; // Orange for good match
     else borderColor = '#6b7280'; // Gray for okay match
   }
 
-  const size = isSelected ? 50 : 40;
-  const borderWidth = isSelected ? 4 : 3;
-  const shadow = isSelected ? '0 4px 12px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.2)';
+  const size = 32; // Fixed size - no longer changes
+  const borderWidth = isSelected ? 4 : 2.5;
+  const shadow = isSelected ? '0 6px 24px rgba(239,68,68,0.8), 0 0 0 3px rgba(239,68,68,0.3)' : '0 2px 6px rgba(0,0,0,0.2)';
+  const fontSize = 18; // Fixed font size
 
   return `
     <div style="
-      background: white;
+      background: ${backgroundColor};
       border: ${borderWidth}px solid ${borderColor};
       border-radius: 50% 50% 50% 0;
       width: ${size}px;
@@ -303,11 +306,13 @@ function getCategoryIcon(category: string, finalScore?: number, isSelected?: boo
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: ${isSelected ? 24 : 20}px;
+      font-size: ${fontSize}px;
       box-shadow: ${shadow};
       transform: rotate(-45deg);
       transition: all 0.3s ease;
       cursor: pointer;
+      position: relative;
+      z-index: ${zIndex};
     ">
       <span style="transform: rotate(45deg);">
         ${iconMap[category] || '📍'}

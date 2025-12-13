@@ -22,7 +22,7 @@ export default function SignupPage() {
   // Handle redirect in useEffect to avoid setState during render
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push('/explore');
     }
   }, [user, router]);
 
@@ -33,7 +33,7 @@ export default function SignupPage() {
         <div className="max-w-md w-full">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Redirecting to dashboard...</p>
+            <p className="text-gray-600 dark:text-gray-400">Redirecting to explore...</p>
           </div>
         </div>
       </div>

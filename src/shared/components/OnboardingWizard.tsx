@@ -47,7 +47,7 @@ export function OnboardingWizard() {
         food_restrictions: data.foodRestrictions || null
       });
       
-      router.push('/dashboard');
+      router.push('/explore');
     } catch (error) {
       console.error('Error skipping onboarding:', error);
       alert('Error creating profile. You can try logging out and back in.');
@@ -83,7 +83,7 @@ export function OnboardingWizard() {
         food_restrictions: data.foodRestrictions || null
       });
       
-      router.push('/dashboard');
+      router.push('/explore');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     } finally {

@@ -16,8 +16,8 @@ export default function OnboardingPage() {
         // Not authenticated -> redirect to login
         router.push('/login');
       } else if (profile) {
-        // Already has profile -> redirect to dashboard
-        router.push('/dashboard');
+        // Already has profile -> redirect to explore
+        router.push('/explore');
       }
       // Else: user exists but no profile -> show onboarding
     }
