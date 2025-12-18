@@ -15,8 +15,8 @@ export interface DatabaseProfile {
   personality_traits?: string[];
   trip_style?: 'planned' | 'mixed' | 'spontaneous';
   spending_style?: string | null;
-  env_preference?: 'city' | 'nature' | 'balanced' | null;
-  activity_style?: 'active' | 'relaxing' | 'balanced' | null;
+  env_preference?: 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' | null;
+  activity_style?: 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' | null;
   updated_at?: string;
 }
 

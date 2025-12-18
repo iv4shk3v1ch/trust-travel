@@ -155,19 +155,29 @@ export default function ProfilePage() {
                 <div>
                   <label className="text-xs font-medium text-gray-500">Budget</label>
                   <p className="text-sm text-gray-900 capitalize">
-                    {currentProfile.budget || 'Not specified'}
+                    {currentProfile.budget === 'low' ? '💰 Budget-friendly' : 
+                     currentProfile.budget === 'medium' ? '💵 Moderate' : 
+                     currentProfile.budget === 'high' ? '💎 Luxury' : 'Not specified'}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">Environment Preference</label>
-                  <p className="text-sm text-gray-900 capitalize">
-                    {currentProfile.env_preference || 'Not specified'}
+                  <p className="text-sm text-gray-900">
+                    {currentProfile.env_preference === 'nature' ? '🌲 Nature lover' : 
+                     currentProfile.env_preference === 'mostly-nature' ? '🌳 Mostly nature' : 
+                     currentProfile.env_preference === 'balanced' ? '⚖️ Balanced' : 
+                     currentProfile.env_preference === 'mostly-city' ? '🌆 Mostly city' : 
+                     currentProfile.env_preference === 'city' ? '🏙️ City explorer' : 'Not specified'}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">Activity Style</label>
-                  <p className="text-sm text-gray-900 capitalize">
-                    {currentProfile.activity_style || 'Not specified'}
+                  <p className="text-sm text-gray-900">
+                    {currentProfile.activity_style === 'relaxing' ? '🧘 Relaxed traveler' : 
+                     currentProfile.activity_style === 'mostly-relaxing' ? '😌 Mostly relaxed' : 
+                     currentProfile.activity_style === 'balanced' ? '⚖️ Balanced' : 
+                     currentProfile.activity_style === 'mostly-active' ? '🚶 Mostly active' : 
+                     currentProfile.activity_style === 'active' ? '⚡ Adventure seeker' : 'Not specified'}
                   </p>
                 </div>
               </div>

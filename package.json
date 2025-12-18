@@ -10,7 +10,9 @@
     "import:places": "tsx scripts/import-tripadvisor-places.ts",
     "import:reviews": "tsx scripts/import-tripadvisor-reviews.ts",
     "generate:reviews": "tsx scripts/generate-synthetic-data.ts",
-    "add:places": "tsx scripts/add-important-places.ts"
+    "add:places": "tsx scripts/add-important-places.ts",
+    "test:embeddings": "tsx scripts/test-embeddings.ts",
+    "import:osm": "tsx scripts/import-osm-places.ts"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -20,6 +22,7 @@
     "@types/d3": "^7.4.3",
     "@types/leaflet": "^1.9.20",
     "@types/uuid": "^10.0.0",
+    "@xenova/transformers": "^2.17.2",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "groq-sdk": "^0.33.0",

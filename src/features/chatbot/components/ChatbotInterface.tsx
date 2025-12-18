@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/shared/components/Button';
 import { PlaceCard } from '@/shared/components/PlaceCard';
 import { ChatMessage, ChatbotPreferences } from '@/shared/types/chatbot';
-import { RecommendedPlace } from '@/core/services/recommender';
+import { RecommendedPlace } from '@/core/services/recommendationEngineV2';
 
 // Dynamically import the map to avoid SSR issues
 const InteractiveMap = dynamic<{ recommendations: RecommendedPlace[]; className: string }>(
@@ -18,6 +18,16 @@ const InteractiveMap = dynamic<{ recommendations: RecommendedPlace[]; className:
 
 interface ChatbotInterfaceProps {
   onClose?: () => void;
+  onRecommendationsUpdate?: (places: RecommendedPlace[]) => void;
+  onPlaceSelect?: (place: RecommendedPlace) => void; // Callback when a place is selected
+  compact?: boolean; // New prop to show simplified version without right panel
+  showBackButton?: boolean; // Show back button in header
+  onBack?: () => void; // Callback for back button
+}
+
+// Ref handle to expose methods to parent
+export interface ChatbotInterfaceHandle {
+  handleMapMarkerClick: (place: RecommendedPlace) => void;
 }
 
 // LocalStorage keys
@@ -30,7 +40,14 @@ interface ChatbotSession {
   timestamp: number;
 }
 
-export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) => {
+export const ChatbotInterface = forwardRef<ChatbotInterfaceHandle, ChatbotInterfaceProps>(({ 
+  onClose, 
+  onRecommendationsUpdate,
+  onPlaceSelect,
+  compact = false,
+  showBackButton = false,
+  onBack
+}, ref) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -45,17 +62,22 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
   const [recommendations, setRecommendations] = useState<RecommendedPlace[]>([]);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(true);
+  const [showDebugInfo, setShowDebugInfo] = useState(false); // Start collapsed
   const [lastApiResponse, setLastApiResponse] = useState<{ success: boolean; places?: RecommendedPlace[]; preferences?: ChatbotPreferences; isComplete?: boolean; response?: string } | null>(null);
   const [allRecommendations, setAllRecommendations] = useState<RecommendedPlace[]>([]); // Cumulative recommendations
   const [rightPanelView, setRightPanelView] = useState<'map' | 'list'>('map'); // Toggle between map and list
   const [isSessionRestored, setIsSessionRestored] = useState(false);
+  const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const placeCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   // Load chat history from localStorage on mount
@@ -118,6 +140,13 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     scrollToBottom();
   }, [messages]);
 
+  // Notify parent component when recommendations update
+  useEffect(() => {
+    if (onRecommendationsUpdate && allRecommendations.length > 0) {
+      onRecommendationsUpdate(allRecommendations);
+    }
+  }, [allRecommendations, onRecommendationsUpdate]);
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -178,7 +207,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.response,
-        timestamp: new Date()
+        timestamp: new Date(),
+        places: data.places || [] // Attach places to message
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -248,6 +278,30 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
     setIsSessionRestored(true); // Mark as ready to save new session
     inputRef.current?.focus();
   };
+
+  // Handle map marker click - highlight card and scroll to it
+  const handleMapMarkerClick = (place: RecommendedPlace) => {
+    // Set as highlighted
+    setHighlightedPlaceId(place.id);
+    
+    // Scroll to the place card
+    const cardElement = placeCardRefs.current.get(place.id);
+    if (cardElement) {
+      cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // Clear highlight after 3 seconds
+    setTimeout(() => {
+      setHighlightedPlaceId(null);
+    }, 3000);
+    
+    // DON'T open details drawer - just highlight
+  };
+
+  // Expose handleMapMarkerClick to parent component
+  useImperativeHandle(ref, () => ({
+    handleMapMarkerClick
+  }), []);
 
   // Toggle mobile map
   const toggleMobileMap = () => {
@@ -323,14 +377,24 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
   return (
     <>
-      <div className="flex h-full bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
-        {/* Left Side - Chat (50% on desktop, full width on mobile) */}
-        <div className="w-full lg:w-1/2 flex flex-col">
+      <div className="flex h-full bg-white overflow-hidden">
+        {/* Left Side - Chat (full width if compact, 50% on desktop if not) */}
+        <div className={`w-full ${compact ? '' : 'lg:w-1/2'} flex flex-col`}>
           {/* Chat Header */}
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+          <div className="flex items-center justify-between p-4 bg-blue-600 text-white">
             <div className="flex items-center space-x-3">
+              {showBackButton && onBack && (
+                <button 
+                  onClick={onBack}
+                  className="text-white hover:bg-blue-700 p-2 rounded-lg transition"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                </button>
+              )}
               <div>
-                <h3 className="font-semibold">AI-Powered Recommendations</h3>
+                <h3 className="font-semibold">AI Travel Assistant</h3>
                 <p className="text-sm text-white/80">
                   {allRecommendations.length > 0 ? `${allRecommendations.length} places discovered!` : 'Discover amazing places in Trento'}
                   {isSessionRestored && messages.length > 1 && (
@@ -365,40 +429,142 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-800/50">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+            <div key={message.id}>
               <div
-                className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl shadow-sm ${
-                  message.role === 'user'
-                    ? 'bg-indigo-500 text-white ml-12'
-                    : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white mr-12 border border-gray-200 dark:border-gray-600'
-                }`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm leading-relaxed">{message.content}</p>
-                <p className={`text-xs mt-2 ${
-                  message.role === 'user' ? 'text-indigo-100' : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <div
+                  className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl shadow-sm ${
+                    message.role === 'user'
+                      ? 'bg-blue-600 text-white ml-12'
+                      : 'bg-white text-gray-900 mr-12 border border-gray-200'
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className={`text-xs mt-2 ${
+                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  }`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
+              
+              {/* Compact Place Cards - shown after assistant messages with places */}
+              {message.role === 'assistant' && message.places && message.places.length > 0 && (
+                <div className="mt-2 space-y-2 mr-12">
+                  {message.places.map((place) => (
+                    <div 
+                      key={place.id}
+                      ref={(el) => {
+                        if (el) placeCardRefs.current.set(place.id, el);
+                        else placeCardRefs.current.delete(place.id);
+                      }}
+                      className={`bg-white border-2 rounded-lg overflow-hidden hover:shadow-md transition-all cursor-pointer ${
+                        highlightedPlaceId === place.id 
+                          ? 'border-blue-500 shadow-lg ring-2 ring-blue-300 scale-105' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div 
+                        className="flex gap-3 p-3 cursor-pointer"
+                        onClick={() => {
+                          // Main card click: Show on map
+                          // Notify parent to update map selection
+                          if (onPlaceSelect) {
+                            onPlaceSelect(place);
+                          }
+                          
+                          // Add to cumulative recommendations if not already there
+                          if (!allRecommendations.find(p => p.id === place.id)) {
+                            setAllRecommendations(prev => [...prev, place]);
+                          }
+                          
+                          // Notify parent component to update map
+                          if (onRecommendationsUpdate) {
+                            const updatedRecs = allRecommendations.find(p => p.id === place.id) 
+                              ? allRecommendations 
+                              : [...allRecommendations, place];
+                            onRecommendationsUpdate(updatedRecs);
+                          }
+                        }}
+                      >
+                        {/* Place Image */}
+                        {place.photo_urls && place.photo_urls.length > 0 && (
+                          <div className="relative">
+                            <img 
+                              src={place.photo_urls[0]} 
+                              alt={place.name}
+                              className="w-20 h-20 object-cover rounded flex-shrink-0"
+                            />
+                            {/* Map pin indicator */}
+                            <div className="absolute -top-1 -right-1 bg-blue-600 text-white rounded-full p-1 shadow-md">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Place Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm text-gray-900 truncate">{place.name}</h4>
+                          <p className="text-xs text-gray-500 capitalize">{place.category.replace(/-/g, ' ')}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-yellow-600">⭐ {place.average_rating.toFixed(1)}</span>
+                            <span className="text-xs text-gray-500">({place.review_count} reviews)</span>
+                          </div>
+                        </div>
+                        
+                        {/* Arrow icon - separate click handler for details */}
+                        <button
+                          className="flex items-center text-gray-400 hover:text-blue-600 transition-colors px-2"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent main card click
+                            
+                            // Select place to show details panel
+                            if (onPlaceSelect) {
+                              onPlaceSelect(place);
+                            }
+                            
+                            // Add to cumulative recommendations if not already there
+                            if (!allRecommendations.find(p => p.id === place.id)) {
+                              setAllRecommendations(prev => [...prev, place]);
+                            }
+                            
+                            // Notify parent component to update map
+                            if (onRecommendationsUpdate) {
+                              const updatedRecs = allRecommendations.find(p => p.id === place.id) 
+                                ? allRecommendations 
+                                : [...allRecommendations, place];
+                              onRecommendationsUpdate(updatedRecs);
+                            }
+                          }}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white dark:bg-gray-700 px-4 py-3 rounded-2xl mr-12 border border-gray-200 dark:border-gray-600 shadow-sm">
+              <div className="bg-white px-4 py-3 rounded-2xl mr-12 border border-gray-200 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
                   {loadingMessage && (
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{loadingMessage}</span>
+                    <span className="text-sm text-gray-600">{loadingMessage}</span>
                   )}
                 </div>
               </div>
@@ -410,12 +576,12 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
 
           {/* Debug Panel */}
           {lastApiResponse && (
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-700">
+            <div className="p-4 bg-yellow-50 border-t border-yellow-200">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-200">🐛 Debug Info</h3>
+                <h3 className="font-medium text-yellow-800">🐛 Debug Info</h3>
                 <button
                   onClick={() => setShowDebugInfo(!showDebugInfo)}
-                  className="text-yellow-600 dark:text-yellow-300 hover:text-yellow-800 dark:hover:text-yellow-100"
+                  className="text-yellow-600 hover:text-yellow-800"
                 >
                   {showDebugInfo ? '🔽' : '▶️'}
                 </button>
@@ -425,15 +591,15 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                 <div className="space-y-2 text-sm">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Response Status:</p>
-                      <p className="text-yellow-700 dark:text-yellow-300">
+                      <p className="font-medium text-yellow-800">Response Status:</p>
+                      <p className="text-yellow-700">
                         {lastApiResponse.success ? '✅ Success' : '❌ Failed'} 
                         {lastApiResponse.isComplete && ' | 🏁 Complete'}
                       </p>
                     </div>
                     <div>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Places Found:</p>
-                      <p className="text-yellow-700 dark:text-yellow-300">
+                      <p className="font-medium text-yellow-800">Places Found:</p>
+                      <p className="text-yellow-700">
                         {lastApiResponse.places?.length || 0} locations
                       </p>
                     </div>
@@ -441,8 +607,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                   
                   {lastApiResponse.preferences && (
                     <div>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Detected Preferences:</p>
-                      <div className="bg-yellow-100 dark:bg-yellow-800/30 p-2 rounded text-yellow-800 dark:text-yellow-200">
+                      <p className="font-medium text-yellow-800">Detected Preferences:</p>
+                      <div className="bg-yellow-100 p-2 rounded text-yellow-800">
                         <p><strong>Categories:</strong> {lastApiResponse.preferences.categories?.join(', ') || 'None'}</p>
                         <p><strong>Experience Tags:</strong> {lastApiResponse.preferences.experienceTags?.join(', ') || 'None'}</p>
                         <p><strong>Destination:</strong> {lastApiResponse.preferences.destination || 'None'}</p>
@@ -453,8 +619,8 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                   
                   {lastApiResponse.places && lastApiResponse.places.length > 0 && (
                     <div>
-                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Places Preview:</p>
-                      <div className="bg-yellow-100 dark:bg-yellow-800/30 p-2 rounded text-yellow-800 dark:text-yellow-200 max-h-32 overflow-y-auto">
+                      <p className="font-medium text-yellow-800">Places Preview:</p>
+                      <div className="bg-yellow-100 p-2 rounded text-yellow-800 max-h-32 overflow-y-auto">
                         {lastApiResponse.places.slice(0, 5).map((place: RecommendedPlace, index: number) => (
                           <p key={index} className="text-xs">
                             • {place.name} ({place.category}) - ⭐{place.average_rating}
@@ -472,7 +638,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
           )}
 
           {/* Input Area - Always available for continuous conversation */}
-          <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 bg-white border-t border-gray-200">
               <div className="flex space-x-3">
                 <input
                   ref={inputRef}
@@ -481,13 +647,13 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything: 'restaurants in old town', 'add hiking trails', 'show me bars for tonight'..."
-                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white transition-all duration-200"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   disabled={isLoading}
                 />
                 <Button
                   onClick={sendMessage}
                   disabled={!inputMessage.trim() || isLoading}
-                  className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-50 transition-all duration-200 flex items-center space-x-2"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all duration-200 flex items-center space-x-2"
                 >
                   <span>Send</span>
                   <span>→</span>
@@ -496,20 +662,20 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
             </div>
 
           {/* Chat actions - always show restart button */}
-          <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 bg-white border-t border-gray-200">
               <Button
                 onClick={restartChat}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 py-3 transition-all duration-200"
+                className="w-full bg-blue-600 text-white rounded-xl hover:bg-blue-700 py-3 transition-all duration-200"
               >
                 <span className="flex items-center justify-center space-x-2">
-                  <span>�</span>
                   <span>New Search</span>
                 </span>
               </Button>
             </div>
         </div>
 
-        {/* Right Side - Map or Places List */}
+        {/* Right Side - Map or Places List (hide in compact mode) */}
+        {!compact && (
         <div className="hidden lg:flex lg:w-1/2 flex-col border-l border-gray-200 dark:border-gray-700">
           {allRecommendations.length > 0 ? (
             <>
@@ -521,7 +687,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                     onClick={() => setRightPanelView('map')}
                     className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-all ${
                       rightPanelView === 'map'
-                        ? 'bg-gray-700 text-white border-b-2 border-indigo-400'
+                        ? 'bg-gray-700 text-white border-b-2 border-blue-400'
                         : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
                     }`}
                   >
@@ -532,7 +698,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
                     onClick={() => setRightPanelView('list')}
                     className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 transition-all ${
                       rightPanelView === 'list'
-                        ? 'bg-gray-700 text-white border-b-2 border-indigo-400'
+                        ? 'bg-gray-700 text-white border-b-2 border-blue-400'
                         : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
                     }`}
                   >
@@ -663,6 +829,7 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Mobile Map Modal */}
@@ -672,4 +839,6 @@ export const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({ onClose }) =
       <FullscreenMapModal />
     </>
   );
-};
+});
+
+ChatbotInterface.displayName = 'ChatbotInterface';

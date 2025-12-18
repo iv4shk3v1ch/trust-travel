@@ -324,22 +324,22 @@ export default function ItineraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <>
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex-1">
               <input
                 type="text"
                 value={tripName}
                 onChange={(e) => setTripName(e.target.value)}
-                className="text-3xl font-bold text-gray-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 -mx-2 w-full"
+                className="text-2xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 -mx-2 w-full"
                 placeholder="Trip Name"
               />
-              <div className="flex flex-wrap gap-4 mt-4">
+              <div className="flex flex-wrap gap-3 mt-3">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Start Date</label>
                   <input
@@ -364,13 +364,13 @@ export default function ItineraryPage() {
             </div>
             
             {/* Statistics */}
-            <div className="flex gap-4">
-              <div className="text-center bg-blue-50 rounded-lg px-4 py-3">
-                <div className="text-2xl font-bold text-blue-600">{numDays}</div>
+            <div className="flex gap-3">
+              <div className="text-center bg-blue-50 rounded-lg px-4 py-2">
+                <div className="text-xl font-bold text-blue-600">{numDays}</div>
                 <div className="text-xs text-gray-600">Days</div>
               </div>
-              <div className="text-center bg-purple-50 rounded-lg px-4 py-3">
-                <div className="text-2xl font-bold text-purple-600">{getTotalPlaces()}</div>
+              <div className="text-center bg-purple-50 rounded-lg px-4 py-2">
+                <div className="text-xl font-bold text-purple-600">{getTotalPlaces()}</div>
                 <div className="text-xs text-gray-600">Places</div>
               </div>
             </div>
@@ -380,14 +380,14 @@ export default function ItineraryPage() {
         {!startDate ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📅</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Set a start date to begin</h3>
-            <p className="text-gray-500">Choose your travel dates above to start planning your itinerary</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Set a start date to begin</h3>
+            <p className="text-gray-600">Choose your travel dates above to start planning your itinerary</p>
           </div>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {itinerary.map((day, dayIndex) => (
-                <div key={day.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div key={day.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   {/* Day Header */}
                   <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
                     <div className="flex items-center justify-between">
@@ -711,6 +711,7 @@ export default function ItineraryPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

@@ -26,10 +26,42 @@ export const Header: React.FC = () => {
 
   // Navigation links - only show when authenticated
   const navLinks = [
-    { href: '/explore', label: 'Explore', icon: '🗺️' },
-    { href: '/search', label: 'Find Travelers', icon: '👥' },
-    { href: '/reviews', label: 'Reviews', icon: '⭐' },
-    { href: '/chatbot', label: 'AI Assistant', icon: '🤖' },
+    { 
+      href: '/explore', 
+      label: 'Explore', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+      )
+    },
+    { 
+      href: '/search', 
+      label: 'Find Travelers', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
+    },
+    { 
+      href: '/reviews', 
+      label: 'Reviews', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+      )
+    },
+    { 
+      href: '/chatbot', 
+      label: 'AI Assistant', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+      )
+    },
   ];
 
   const isActivePath = (href: string) => {
@@ -43,7 +75,9 @@ export const Header: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link href="/explore" className="flex items-center gap-2">
-              <span className="text-2xl">✈️</span>
+              <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+              </svg>
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 TrustTravel
               </span>
@@ -62,7 +96,7 @@ export const Header: React.FC = () => {
                         : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                     }`}
                   >
-                    <span>{link.icon}</span>
+                    {link.icon}
                     <span>{link.label}</span>
                   </Link>
                 ))}

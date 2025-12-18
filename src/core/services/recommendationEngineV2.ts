@@ -370,8 +370,16 @@ async function getRecommendationsSimplified(
     return [];
   }
 
+  // Filter out places without reviews (no reviews = not popular/visited)
+  const placesWithReviews = places.filter(place => {
+    const reviews = Array.isArray(place.reviews) ? place.reviews : [];
+    return reviews.length > 0;
+  });
+
+  console.log(`📋 Filtered to ${placesWithReviews.length} places with reviews (removed ${places.length - placesWithReviews.length} places without reviews)`);
+
   // Calculate scores in JavaScript (temporary until RPC is created)
-  const processed = places
+  const processed = placesWithReviews
     .map((place: { 
       id: string; 
       name: string; 

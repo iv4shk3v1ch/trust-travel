@@ -8,20 +8,22 @@ import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { Header } from '@/shared/components/Header';
 import { Footer } from '@/shared/components/Footer';
+import { CategoryPreferences } from '../CategoryPreferences';
 
 export default function ProfileEditPage() {
   const router = useRouter();
   const { user, profile: existingProfile, loading: authLoading, refreshProfile } = useAuthContext();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showPreferences, setShowPreferences] = useState(false);
   
   const [formData, setFormData] = useState({
     full_name: '',
     age: '',
     gender: '' as 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | '',
     budget: 'medium' as 'low' | 'medium' | 'high',
-    env_preference: '' as 'city' | 'nature' | 'balanced' | '',
-    activity_style: '' as 'active' | 'relaxing' | 'balanced' | '',
+    env_preference: '' as 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' | '',
+    activity_style: '' as 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' | '',
     food_restrictions: ''
   });
 
@@ -195,53 +197,158 @@ export default function ProfileEditPage() {
                 Travel Preferences
               </h3>
               
-              <div className="space-y-3">
+              <div className="space-y-6">
+                {/* Budget Slider (3 states) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Budget <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value as 'low' | 'medium' | 'high' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  >
-                    <option value="low">Low (Budget-friendly)</option>
-                    <option value="medium">Medium (Moderate spending)</option>
-                    <option value="high">High (Luxury)</option>
-                  </select>
+                  <div className="space-y-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="1"
+                      value={formData.budget === 'low' ? 1 : formData.budget === 'medium' ? 2 : 3}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        const budgetMap: { [key: number]: 'low' | 'medium' | 'high' } = {
+                          1: 'low',
+                          2: 'medium',
+                          3: 'high'
+                        };
+                        setFormData({ ...formData, budget: budgetMap[value] });
+                      }}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      required
+                    />
+                    <div className="flex justify-between px-1">
+                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'low' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">💰</span>
+                        <span className="text-xs font-medium text-gray-700 text-center">Budget</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'medium' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">💵</span>
+                        <span className="text-xs font-medium text-gray-700 text-center">Moderate</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'high' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">💎</span>
+                        <span className="text-xs font-medium text-gray-700 text-center">Luxury</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
+                {/* Environment Slider (5 states) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Environment Preference
                   </label>
-                  <select
-                    value={formData.env_preference}
-                    onChange={(e) => setFormData({ ...formData, env_preference: e.target.value as 'city' | 'nature' | 'balanced' | '' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Select preference</option>
-                    <option value="city">City (Urban environments)</option>
-                    <option value="nature">Nature (Outdoor settings)</option>
-                    <option value="balanced">Balanced (Mix of both)</option>
-                  </select>
+                  <div className="space-y-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value={
+                        formData.env_preference === 'nature' ? 1 :
+                        formData.env_preference === 'mostly-nature' ? 2 :
+                        formData.env_preference === 'balanced' ? 3 :
+                        formData.env_preference === 'mostly-city' ? 4 :
+                        formData.env_preference === 'city' ? 5 : 3
+                      }
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        const envMap: { [key: number]: 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' } = {
+                          1: 'nature',
+                          2: 'mostly-nature',
+                          3: 'balanced',
+                          4: 'mostly-city',
+                          5: 'city'
+                        };
+                        setFormData({ ...formData, env_preference: envMap[value] });
+                      }}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                    />
+                    <div className="flex justify-between px-1">
+                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'nature' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🌲</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Nature</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'mostly-nature' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🌳</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Nature</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'balanced' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">⚖️</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Balanced</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'mostly-city' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🌆</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>City</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'city' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🏙️</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">City</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
+                {/* Activity Style Slider (5 states) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Activity Style
                   </label>
-                  <select
-                    value={formData.activity_style}
-                    onChange={(e) => setFormData({ ...formData, activity_style: e.target.value as 'active' | 'relaxing' | 'balanced' | '' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Select style</option>
-                    <option value="active">Active (Adventure & sports)</option>
-                    <option value="relaxing">Relaxing (Leisure & rest)</option>
-                    <option value="balanced">Balanced (Mix of both)</option>
-                  </select>
+                  <div className="space-y-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value={
+                        formData.activity_style === 'relaxing' ? 1 :
+                        formData.activity_style === 'mostly-relaxing' ? 2 :
+                        formData.activity_style === 'balanced' ? 3 :
+                        formData.activity_style === 'mostly-active' ? 4 :
+                        formData.activity_style === 'active' ? 5 : 3
+                      }
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        const activityMap: { [key: number]: 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' } = {
+                          1: 'relaxing',
+                          2: 'mostly-relaxing',
+                          3: 'balanced',
+                          4: 'mostly-active',
+                          5: 'active'
+                        };
+                        setFormData({ ...formData, activity_style: activityMap[value] });
+                      }}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                    />
+                    <div className="flex justify-between px-1">
+                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'relaxing' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🧘</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Relaxed</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'mostly-relaxing' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">😌</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Relaxed</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'balanced' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">⚖️</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Balanced</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'mostly-active' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">🚶</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Active</span>
+                      </div>
+                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'active' ? 'scale-110' : 'opacity-60'}`}>
+                        <span className="text-3xl mb-1">⚡</span>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Active</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -316,6 +423,27 @@ export default function ProfileEditPage() {
               </button>
             </div>
           </form>
+
+          {/* Category Preferences Section */}
+          {user && (
+            <div className="mt-8">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  Place Preferences
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Help us understand what types of places you enjoy visiting
+                </p>
+              </div>
+              <CategoryPreferences 
+                userId={user.id}
+                onComplete={() => {
+                  // Navigate back to profile after completion
+                  router.push('/profile');
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
       <Footer />

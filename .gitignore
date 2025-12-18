@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 docs/INTERACTION_TRACKING_GUIDE.md
+docs/PLACE_MANAGEMENT_GUIDE.md
+docs/TASK_1_1_COMPLETE.md
+docs/TASK_1_2_COMPLETE.md

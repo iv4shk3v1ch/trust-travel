@@ -126,9 +126,9 @@ export default function FavoritesPage() {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your favorites...</p>
           </div>
         </div>
@@ -140,14 +140,14 @@ export default function FavoritesPage() {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="text-6xl mb-4">😞</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Oops!</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
               onClick={fetchFavorites}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
             >
               Try Again
             </button>
@@ -162,16 +162,16 @@ export default function FavoritesPage() {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="text-6xl mb-4">❤️</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">No favorites yet</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">No favorites yet</h2>
           <p className="text-gray-600 mb-6">
             Start exploring and save places you love to see them here!
           </p>
           <button
             onClick={() => router.push('/explore')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition"
           >
             Explore Places
           </button>
@@ -184,28 +184,35 @@ export default function FavoritesPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                ❤️ My Favorites
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredPlaces.length} {filteredPlaces.length === 1 ? 'place' : 'places'}
-              </p>
-            </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Back Button */}
+          <button 
+            onClick={() => router.push('/explore')}
+            className="flex items-center text-gray-600 hover:text-blue-600 transition mb-6"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              ❤️ My Favorites
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              {filteredPlaces.length} {filteredPlaces.length === 1 ? 'place' : 'places'}
+            </p>
           </div>
 
           {/* Filters and Sort */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
             {/* Category Filter */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
             >
               <option value="all">All Categories ({places.length})</option>
               {categories.map(cat => (
@@ -219,31 +226,48 @@ export default function FavoritesPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
             >
               <option value="recent">Recently Saved</option>
               <option value="rating">Highest Rated</option>
               <option value="match">Best Match</option>
             </select>
           </div>
-        </div>
-      </div>
 
       {/* Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPlaces.map(place => (
-            <PlaceCard
-              key={place.id}
-              place={place}
-              isSaved={savedPlaceIds.has(place.id)}
-              onLike={() => handleUnsave(place.id)}
-              onSkip={() => {}} // Not used in favorites
-              onViewDetails={() => handleViewDetails(place)}
-            />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredPlaces.map(place => (
+          <div key={place.id} className="relative group">
+            <div 
+              onClick={() => handleViewDetails(place)}
+              className="cursor-pointer"
+            >
+              <PlaceCard
+                place={place}
+                isSaved={savedPlaceIds.has(place.id)}
+                onLike={() => {}} // Handled by delete button
+                onViewDetails={() => {}} // Handled by card click
+                hideActions={true} // Hide all action buttons in favorites view
+              />
+            </div>
+            
+            {/* Delete button - shows on hover */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUnsave(place.id);
+              }}
+              className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+              title="Remove from favorites"
+            >
+              <svg className="w-5 h-5 text-gray-600 hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ))}
       </div>
+    </div>
 
       {/* Place Details Drawer */}
       {selectedPlace && (

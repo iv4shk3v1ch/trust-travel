@@ -16,6 +16,7 @@ interface PlaceCardProps {
   onAddToItinerary?: () => void;
   onWriteReview?: () => void;
   onClick?: () => void;
+  hideActions?: boolean; // Hide all action buttons (for favorites view)
 }
 
 export default function PlaceCard({ 
@@ -25,7 +26,8 @@ export default function PlaceCard({
   onViewDetails, 
   onAddToItinerary, 
   onWriteReview,
-  onClick
+  onClick,
+  hideActions = false
 }: PlaceCardProps) {
   const photoUrl = place.photo_urls?.[0] || '/placeholder-place.svg';
   
@@ -167,8 +169,9 @@ export default function PlaceCard({
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-3 border-t border-gray-100">
+        {/* Action Buttons - Only show if not hidden */}
+        {!hideActions && (
+          <div className="flex gap-2 pt-3 border-t border-gray-100">
           <button
             onClick={onViewDetails}
             className="flex-1 py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition flex items-center justify-center gap-2"
@@ -222,6 +225,7 @@ export default function PlaceCard({
             <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
           </button>
         </div>
+        )}
       </div>
     </div>
   );

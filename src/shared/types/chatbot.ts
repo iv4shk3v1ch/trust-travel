@@ -1,8 +1,11 @@
+import { RecommendedPlace } from '@/core/services/recommendationEngineV2';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  places?: RecommendedPlace[]; // Places attached to this message
 }
 
 export interface ChatbotPreferences {

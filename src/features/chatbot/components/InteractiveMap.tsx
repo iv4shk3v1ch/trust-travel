@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { RecommendedPlace } from '@/core/services/recommender';
+import { RecommendedPlace } from '@/core/services/recommendationEngineV2';
 
 // Fix for default markers in react-leaflet
 import L from 'leaflet';

@@ -1,73 +1,81 @@
 /**
- * Embedding Service - Generate vector embeddings for places, reviews, and profiles
- * Uses OpenAI API for embedding generation (Groq doesn't have embeddings yet)
+ * Embedding Service
+ * Generates 384-dimensional vectors using all-MiniLM-L6-v2 model
+ * Uses Xenova Transformers for local embedding generation (no API costs!)
  */
 
+import { pipeline, type FeatureExtractionPipeline } from '@xenova/transformers';
 import { supabase } from '../database/supabase';
-
-// Groq doesn't have native embeddings API yet, so we'll use OpenAI's
-// But keeping the structure ready for when Groq adds embeddings
-// For now, using a workaround with text-embedding via external service
-
-// NOTE: Since Groq doesn't have embeddings API, we'll use OpenAI's embedding API
-// with a fallback to a simple bag-of-words approach if OpenAI is not available
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
-
-const EMBEDDING_MODEL = 'text-embedding-3-small'; // 1536 dimensions
-const EMBEDDING_DIMENSIONS = 1536;
+import {
+  EMBEDDING_DIMENSION,
+  EMBEDDING_MODEL,
+  type Vector,
+} from '../types/vectorTypes';
 
 /**
- * Generate embedding vector from text using OpenAI
- * Falls back to simple vector if OpenAI is not available
+ * Singleton pipeline instance for the embedding model
  */
-async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    // Clean and prepare text
-    const cleanText = text.trim().replace(/\s+/g, ' ').substring(0, 8000); // Max 8k chars
-    
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('⚠️ OPENAI_API_KEY not set - using fallback embedding');
-      return generateFallbackEmbedding(cleanText);
+let embeddingPipeline: FeatureExtractionPipeline | null = null;
+
+/**
+ * Initialize the embedding pipeline
+ * This downloads the model on first use (cached afterwards)
+ */
+async function initializePipeline(): Promise<FeatureExtractionPipeline> {
+  if (!embeddingPipeline) {
+    console.log('🔄 Initializing embedding model:', EMBEDDING_MODEL);
+    try {
+      // Create feature-extraction pipeline with all-MiniLM-L6-v2
+      const pipe = await pipeline(
+        'feature-extraction',
+        'Xenova/all-MiniLM-L6-v2'
+      );
+      embeddingPipeline = pipe as FeatureExtractionPipeline;
+      console.log('✅ Embedding model initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize embedding model:', error);
+      throw new Error('Failed to initialize embedding model');
     }
-
-    const response = await openai.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: cleanText,
-    });
-
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    // Fallback to simple embedding
-    return generateFallbackEmbedding(text);
   }
+  return embeddingPipeline as FeatureExtractionPipeline;
 }
 
 /**
- * Fallback: Generate simple bag-of-words embedding when OpenAI is unavailable
- * This is a simplified approach for development/testing
+ * Generate embedding vector from text using Xenova transformers
+ * No API calls - runs locally!
  */
-function generateFallbackEmbedding(text: string): number[] {
-  // Create a deterministic embedding based on text content
-  const words = text.toLowerCase().split(/\s+/);
-  const vector = new Array(EMBEDDING_DIMENSIONS).fill(0);
-  
-  // Simple hash-based embedding
-  words.forEach((word, idx) => {
-    for (let i = 0; i < word.length; i++) {
-      const charCode = word.charCodeAt(i);
-      const position = (charCode * (idx + 1) * (i + 1)) % EMBEDDING_DIMENSIONS;
-      vector[position] += 1 / (words.length + 1);
+async function generateEmbedding(text: string): Promise<Vector> {
+  if (!text || text.trim().length === 0) {
+    throw new Error('Cannot generate embedding for empty text');
+  }
+
+  try {
+    const pipeline = await initializePipeline();
+
+    // Clean text (max 512 tokens for all-MiniLM-L6-v2)
+    const cleanText = text.trim().replace(/\s+/g, ' ').substring(0, 8000);
+
+    // Generate embedding
+    const output = await pipeline(cleanText, {
+      pooling: 'mean',
+      normalize: true, // Normalize to unit vector
+    });
+
+    // Extract embedding array from tensor
+    const embedding = Array.from(output.data) as Vector;
+
+    // Verify dimension
+    if (embedding.length !== EMBEDDING_DIMENSION) {
+      throw new Error(
+        `Invalid embedding dimension: expected ${EMBEDDING_DIMENSION}, got ${embedding.length}`
+      );
     }
-  });
-  
-  // Normalize
-  const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
-  return vector.map(val => magnitude > 0 ? val / magnitude : 0);
+
+    return embedding;
+  } catch (error) {
+    console.error('❌ Error generating embedding:', error);
+    throw error;
+  }
 }
 
 /**
@@ -437,4 +445,180 @@ export async function batchGenerateProfileEmbeddings(limit: number = 50): Promis
     console.error('Error in batchGenerateProfileEmbeddings:', error);
     return { processed: 0, succeeded: 0, failed: 0 };
   }
+}
+
+// ===================================
+// UTILITY FUNCTIONS
+// ===================================
+
+/**
+ * Calculate cosine similarity between two vectors
+ * @param a - First vector
+ * @param b - Second vector
+ * @returns Similarity score (0 to 1, where 1 is identical)
+ */
+export function cosineSimilarity(a: Vector, b: Vector): number {
+  if (a.length !== b.length) {
+    throw new Error('Vectors must have same dimension');
+  }
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  if (normA === 0 || normB === 0) {
+    return 0;
+  }
+
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+/**
+ * Normalize vector to unit length
+ * @param vector - Input vector
+ * @returns Normalized vector
+ */
+export function normalizeVector(vector: Vector): Vector {
+  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+
+  if (norm === 0) {
+    return vector;
+  }
+
+  return vector.map((val) => val / norm);
+}
+
+/**
+ * Weighted average of multiple vectors (for incremental learning)
+ * Formula: result = Σ(vector_i * weight_i) / Σ(weight_i)
+ * @param vectors - Array of vectors with their weights
+ * @returns Averaged vector
+ */
+export function weightedVectorAverage(
+  vectors: Array<{ vector: Vector; weight: number }>
+): Vector {
+  if (vectors.length === 0) {
+    throw new Error('Cannot average empty vector array');
+  }
+
+  const dimension = vectors[0].vector.length;
+  const result = new Array(dimension).fill(0);
+  let totalWeight = 0;
+
+  for (const { vector, weight } of vectors) {
+    if (vector.length !== dimension) {
+      throw new Error('All vectors must have same dimension');
+    }
+
+    totalWeight += weight;
+    for (let i = 0; i < dimension; i++) {
+      result[i] += vector[i] * weight;
+    }
+  }
+
+  // Normalize by total weight
+  if (totalWeight > 0) {
+    for (let i = 0; i < dimension; i++) {
+      result[i] /= totalWeight;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Incremental learning update for user preference embedding
+ * Formula: new_vector = α * old_vector + (1-α) * interaction_vector
+ * @param currentEmbedding - Current user preference vector
+ * @param interactionEmbedding - Vector from new interaction (e.g., place saved)
+ * @param interactionWeight - Weight for this action (from interaction_weights table)
+ * @param alpha - Learning rate (0-1, default 0.9 = keep 90% of old, learn 10% new)
+ * @returns Updated embedding
+ */
+export function updateEmbeddingIncremental(
+  currentEmbedding: Vector,
+  interactionEmbedding: Vector,
+  interactionWeight: number,
+  alpha: number = 0.9
+): Vector {
+  if (currentEmbedding.length !== interactionEmbedding.length) {
+    throw new Error('Embeddings must have same dimension');
+  }
+
+  // Scale interaction weight (never more than 50% update in one step)
+  const scaledWeight = Math.min(interactionWeight, 0.5);
+  
+  // Calculate: new = α * old + (1-α) * scaled_weight * interaction
+  const result = currentEmbedding.map((oldVal, i) => {
+    return alpha * oldVal + (1 - alpha) * scaledWeight * interactionEmbedding[i];
+  });
+
+  // Normalize to unit vector
+  return normalizeVector(result);
+}
+
+/**
+ * Create a zero vector (for initialization)
+ * @returns Zero vector of correct dimension
+ */
+export function createZeroVector(): Vector {
+  return new Array(EMBEDDING_DIMENSION).fill(0);
+}
+
+/**
+ * Format vector for PostgreSQL
+ * Converts array to pgvector format string: '[0.1, 0.2, ...]'
+ * @param vector - Input vector
+ * @returns Formatted string for SQL
+ */
+export function formatVectorForDB(vector: Vector): string {
+  return `[${vector.join(',')}]`;
+}
+
+/**
+ * Parse vector from database
+ * Converts pgvector string back to array
+ * @param dbString - String from database
+ * @returns Vector array
+ */
+export function parseVectorFromDB(dbString: string): Vector {
+  // Remove brackets and split by comma
+  const cleaned = dbString.replace(/[\[\]]/g, '');
+  return cleaned.split(',').map((s) => parseFloat(s.trim()));
+}
+
+/**
+ * Check if model is initialized
+ * @returns True if pipeline is ready
+ */
+export function isModelInitialized(): boolean {
+  return embeddingPipeline !== null;
+}
+
+/**
+ * Pre-warm the model (download and cache)
+ * Call this during app initialization for better UX
+ */
+export async function prewarmModel(): Promise<void> {
+  console.log('🔥 Pre-warming embedding model...');
+  await initializePipeline();
+  // Generate a dummy embedding to ensure everything works
+  await generateEmbedding('test');
+  console.log('✅ Model pre-warmed and ready');
+}
+
+/**
+ * Generate embedding for custom text (direct access)
+ * Use this for testing or custom use cases
+ * @param text - Text to embed
+ * @returns Vector embedding
+ */
+export async function generateCustomEmbedding(text: string): Promise<Vector> {
+  return generateEmbedding(text);
 }
