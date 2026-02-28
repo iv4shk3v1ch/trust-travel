@@ -66,6 +66,7 @@ export interface RecommendedPlace {
   
   // Pricing and environment
   price_level?: string | null;
+  price_category?: string | null; // NEW: budget, moderate, expensive, luxury
   indoor_outdoor?: string | null;
   verified?: boolean;
   

@@ -50,10 +50,9 @@ export default function ExplorePage() {
   const [allPlaces, setAllPlaces] = useState<RecommendedPlace[]>([]); // All fetched places
   const [loading, setLoading] = useState(true);
   
-  // Advanced filters
-  const [priceFilter, setPriceFilter] = useState<number[]>([]);
-  const [environmentFilter, setEnvironmentFilter] = useState<string>(''); // 'indoor', 'outdoor', or ''
-  const [distanceFilter, setDistanceFilter] = useState<number>(10); // km
+  // Advanced filters (UPDATED TO NEW SCHEMA)
+  const [priceFilter, setPriceFilter] = useState<string[]>([]); // 'budget', 'moderate', 'expensive', 'luxury'
+  const [environmentFilter, setEnvironmentFilter] = useState<string>(''); // 'indoor', 'outdoor', 'mixed', or ''
   
   // Saved places
   const [savedPlaceIds, setSavedPlaceIds] = useState<string[]>([]);
@@ -120,21 +119,19 @@ export default function ExplorePage() {
     fetchData();
   }, [user]);
 
-  // Category groups (organized by type)
-  const categoryGroups = {
-    'Food & Dining': ['restaurant', 'local-trattoria', 'pizzeria', 'street-food', 'cafe', 'specialty-coffee-bar', 'specialty-coffee', 'food-market', 'co-working-café', 'scenic-cafe'],
-    'Bars & Nightlife': ['aperetivo-bar', 'craft-beer-pub', 'rooftop-bar', 'dessert-bar', 'karaoke-bar', 'student-pub', 'underground-club', 'commercial-nightclub'],
-    'Culture & Arts': ['museum', 'art-gallery', 'contemporary-art-space', 'street-art-area', 'theatre', 'cinema', 'comedy-club', 'cultural-event-venue', 'exhibition-hall', 'cultural-center', 'library'],
-    'Historic & Landmarks': ['historical-landmark', 'castle', 'church', 'tower', 'bridge', 'old-town', 'city-square', 'street'],
-    'Nature & Outdoors': ['park', 'botanical-garden', 'viewpoint', 'lake', 'river-walk', 'hiking-trail', 'mountain-peak', 'waterfall', 'forest-walk', 'beach', 'adventure-park', 'picnic-area'],
-    'Shopping': ['vintage-store', 'local-market', 'concept-store', 'artisanal-shop', 'wine-shop', 'bookstore', 'shopping-centre'],
-    'Wellness & Leisure': ['spa', 'thermal-bath', 'yoga-studio', 'live-music-venue', 'local-festival-area'],
+  // NEW SCHEMA: 5 Main categories for filtering
+  const mainCategories = {
+    'food_drink': { label: 'Food & Drink', icon: '🍽️' },
+    'nightlife': { label: 'Nightlife', icon: '🌙' },
+    'culture_sights': { label: 'Culture & Sights', icon: '🏛️' },
+    'nature_outdoor': { label: 'Nature & Outdoor', icon: '🌳' },
+    'shopping_activities': { label: 'Shopping & Activities', icon: '🛍️' },
   };
 
   // State for filter modal
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Filter places by search and all filter criteria
+  // Filter places by search and all filter criteria (UPDATED FOR NEW SCHEMA)
   const filteredPlaces = allPlaces.filter(place => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
@@ -142,22 +139,42 @@ export default function ExplorePage() {
       place.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       place.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Category filter - match exact category slug or if no filters selected
-    const matchesCategory = selectedCategories.length === 0 ||
-      selectedCategories.includes(place.category);
+    // Category filter - Now uses main categories from subcategory mapping
+    const matchesCategory = selectedCategories.length === 0 || (() => {
+      // Place category is a subcategory (e.g., 'restaurant')
+      // We need to check if its parent main category is selected
+      // For now, we'll do a simpler match - TODO: add proper main category mapping in API
+      return selectedCategories.some(selectedMain => {
+        // This is a temporary match - ideally we'd have main_category field from DB
+        if (selectedMain === 'food_drink') {
+          return ['restaurant', 'street_food', 'cafe', 'bar'].includes(place.category);
+        }
+        if (selectedMain === 'nightlife') {
+          return ['nightclub'].includes(place.category);
+        }
+        if (selectedMain === 'culture_sights') {
+          return ['museum', 'art_gallery', 'historical_site', 'landmark'].includes(place.category);
+        }
+        if (selectedMain === 'nature_outdoor') {
+          return ['park', 'viewpoint', 'hiking_trail', 'lake_river_beach'].includes(place.category);
+        }
+        if (selectedMain === 'shopping_activities') {
+          return ['market', 'shopping_area', 'entertainment_venue', 'spa_wellness'].includes(place.category);
+        }
+        return false;
+      });
+    })();
 
-    // Price filter - handle price_level as string or number
+    // Price filter - Now uses price_category strings
     const matchesPrice = priceFilter.length === 0 || (() => {
-      const priceLevel = place.price_level ? 
-        (typeof place.price_level === 'string' ? parseInt(place.price_level) : place.price_level) : 2;
-      const matches = priceFilter.includes(priceLevel);
-      return matches;
+      const priceCategory = place.price_category || place.price_level || 'moderate';
+      return priceFilter.includes(priceCategory);
     })();
 
     // Environment filter
     const matchesEnvironment = !environmentFilter ||
-      (environmentFilter === 'indoor' && place.indoor_outdoor === 'indoor') ||
-      (environmentFilter === 'outdoor' && place.indoor_outdoor === 'outdoor');
+      place.indoor_outdoor === environmentFilter ||
+      (environmentFilter === 'mixed' && place.indoor_outdoor === 'mixed');
 
     // Distance filter (if user location available - for now we skip this)
     const matchesDistance = true; // TODO: Implement geolocation-based distance filtering
@@ -494,27 +511,33 @@ export default function ExplorePage() {
 
                   {/* Modal Content */}
                   <div className="overflow-y-auto p-4 max-h-[60vh]">
-                    {/* Price Filter */}
+                    {/* Price Filter - NEW SCHEMA */}
                     <div className="mb-6">
-                      <h3 className="font-semibold text-gray-900 mb-3">💰 Price Level</h3>
-                      <div className="flex gap-2">
-                        {[1, 2, 3].map(price => (
+                      <h3 className="font-semibold text-gray-900 mb-3">💰 Price Category</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { value: 'budget', label: '€', desc: '<€10' },
+                          { value: 'moderate', label: '€€', desc: '€10-30' },
+                          { value: 'expensive', label: '€€€', desc: '€30-60' },
+                          { value: 'luxury', label: '€€€€', desc: '>€60' }
+                        ].map(({ value, label, desc }) => (
                           <button
-                            key={price}
+                            key={value}
                             onClick={() => {
                               setPriceFilter(prev =>
-                                prev.includes(price)
-                                  ? prev.filter(p => p !== price)
-                                  : [...prev, price]
+                                prev.includes(value)
+                                  ? prev.filter(p => p !== value)
+                                  : [...prev, value]
                               );
                             }}
-                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                              priceFilter.includes(price)
+                            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+                              priceFilter.includes(value)
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {'€'.repeat(price)}
+                            <div className="font-bold">{label}</div>
+                            <div className="text-xs mt-0.5 opacity-80">{desc}</div>
                           </button>
                         ))}
                       </div>
@@ -524,68 +547,51 @@ export default function ExplorePage() {
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 mb-3">🏞️ Environment</h3>
                       <div className="flex gap-2">
-                        {['', 'indoor', 'outdoor'].map(env => (
+                        {[
+                          { value: '', label: 'Any', icon: '🌐' },
+                          { value: 'indoor', label: 'Indoor', icon: '🏛️' },
+                          { value: 'outdoor', label: 'Outdoor', icon: '🌳' }
+                        ].map(({ value, label, icon }) => (
                           <button
-                            key={env}
-                            onClick={() => setEnvironmentFilter(env)}
+                            key={value || 'any'}
+                            onClick={() => setEnvironmentFilter(value)}
                             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                              environmentFilter === env
+                              environmentFilter === value
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {env === '' ? 'Any' : env === 'indoor' ? '🏛️ Indoor' : '🌳 Outdoor'}
+                            {icon} {label}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Distance Filter */}
-                    <div className="mb-6">
-                      <h3 className="font-semibold text-gray-900 mb-3">📍 Distance (within {distanceFilter} km)</h3>
-                      <input
-                        type="range"
-                        min="1"
-                        max="50"
-                        value={distanceFilter}
-                        onChange={(e) => setDistanceFilter(Number(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>1 km</span>
-                        <span>50 km</span>
-                      </div>
-                    </div>
-
-                    {/* Category Filter */}
+                    {/* Category Filter - NEW: 5 Main Categories */}
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 mb-3">🏷️ Categories</h3>
-                      {Object.entries(categoryGroups).map(([groupName, categories]) => (
-                        <div key={groupName} className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">{groupName}</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {categories.map(category => (
-                              <button
-                                key={category}
-                                onClick={() => {
-                                  setSelectedCategories(prev =>
-                                    prev.includes(category)
-                                      ? prev.filter(c => c !== category)
-                                      : [...prev, category]
-                                  );
-                                }}
-                                className={`px-3 py-2 rounded-lg text-sm text-left transition ${
-                                  selectedCategories.includes(category)
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                {category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(mainCategories).map(([slug, { label, icon }]) => (
+                          <button
+                            key={slug}
+                            onClick={() => {
+                              setSelectedCategories(prev =>
+                                prev.includes(slug)
+                                  ? prev.filter(c => c !== slug)
+                                  : [...prev, slug]
+                              );
+                            }}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-left transition ${
+                              selectedCategories.includes(slug)
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            <span className="text-xl">{icon}</span>
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -596,7 +602,6 @@ export default function ExplorePage() {
                         setSelectedCategories([]);
                         setPriceFilter([]);
                         setEnvironmentFilter('');
-                        setDistanceFilter(10);
                       }}
                       className="text-gray-600 hover:text-gray-800 font-medium"
                     >

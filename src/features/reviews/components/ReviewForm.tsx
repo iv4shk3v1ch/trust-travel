@@ -8,6 +8,14 @@ import type { PlaceWithType } from '@/shared/types/place';
 import { PRICE_RANGES } from '@/shared/types/review';
 import { getExperienceTags } from '@/core/database/reviewsDatabase';
 import { getAllPlaces } from '@/core/database/placesDatabase';
+import { 
+  TAG_GROUP_LABELS,
+  TAG_GROUPS,
+  EXPERIENCE_TAG_LABELS,
+  getRecommendedTags,
+  isFoodCategory,
+  type PlaceCategory
+} from '@/shared/utils/dataStandards';
 
 interface ReviewFormProps {
   onSubmit: (review: ReviewFormData) => void;
@@ -32,6 +40,41 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
   });
 
   const [selectedPlace, setSelectedPlace] = useState<PlaceWithType | null>(null);
+  const [showRecommended, setShowRecommended] = useState(false);
+
+  // Quick preset configurations
+  const quickPresets = [
+    {
+      name: '💑 Date Night',
+      tags: ['date', 'romantic', 'evening'],
+      description: 'Perfect for couples'
+    },
+    {
+      name: '👨‍👩‍👧‍👦 Family Fun',
+      tags: ['family', 'afternoon', 'calm'],
+      description: 'Great for families'
+    },
+    {
+      name: '⚡ Quick Bite',
+      tags: ['quick_stop', 'food', 'solo'],
+      description: 'Fast and easy'
+    },
+    {
+      name: '🎉 Night Out',
+      tags: ['friends', 'lively', 'late_night', 'drinks'],
+      description: 'Party with friends'
+    },
+    {
+      name: '💰 Budget Explorer',
+      tags: ['budget_friendly', 'authentic_local', 'solo'],
+      description: 'Affordable adventures'
+    },
+    {
+      name: '📸 Tourist Must-See',
+      tags: ['scenic_view', 'morning', 'quick_stop'],
+      description: 'Photo opportunities'
+    }
+  ];
 
   useEffect(() => {
     loadData();
@@ -88,6 +131,33 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
     setFormData({ ...formData, experience_tag_ids: newTags });
   };
 
+  // Apply a quick preset
+  const applyPreset = (presetTags: string[]) => {
+    // Find tag IDs that match the preset slugs
+    const tagIds = experienceTags
+      .filter(tag => presetTags.includes(tag.slug))
+      .map(tag => tag.id);
+    
+    setFormData({ ...formData, experience_tag_ids: tagIds });
+  };
+
+  // Get recommended tags based on place category
+  const getRecommendedTagIds = (): string[] => {
+    if (!selectedPlace?.place_type?.name) return [];
+    
+    const recommendedTagValues = getRecommendedTags(selectedPlace.place_type.name as PlaceCategory);
+    const recommendedSet = new Set<string>(recommendedTagValues);
+    return experienceTags
+      .filter(tag => recommendedSet.has(tag.slug))
+      .map(tag => tag.id);
+  };
+
+  // Check if should show price range (only for food/drink places)
+  const shouldShowPriceRange = (): boolean => {
+    if (!selectedPlace?.place_type?.name) return true;
+    return isFoodCategory(selectedPlace.place_type.name as PlaceCategory);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -107,15 +177,6 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
 
     onSubmit(formData);
   };
-
-  // Group experience tags by category
-  const tagsByCategory = experienceTags.reduce((acc, tag) => {
-    if (!acc[tag.category]) {
-      acc[tag.category] = [];
-    }
-    acc[tag.category].push(tag);
-    return acc;
-  }, {} as Record<string, ExperienceTag[]>);
 
   if (loading) {
     return (
@@ -239,68 +300,162 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
         </div>
       </div>
 
-      {/* Price Range */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">
-          Price Range <span className="text-gray-400">(per person)</span>
-        </h3>
-        <p className="text-sm text-gray-600 mb-3">
-          How much did you spend per person approximately?
-        </p>
-        
-        <select
-          value={formData.price_range || ''}
-          onChange={(e) => setFormData({ ...formData, price_range: e.target.value || undefined })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-        >
-          <option value="">Select price range...</option>
-          {PRICE_RANGES.map(range => (
-            <option key={range.value} value={range.value}>
-              {range.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Experience Tags - Simplified */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">
-          Experience Tags
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Select tags that describe your experience
-        </p>
-        
-        <div className="space-y-3">
-          {Object.entries(tagsByCategory).map(([category, tags]) => (
-            <div key={category}>
-              <h4 className="text-sm font-medium text-gray-700 mb-2 capitalize">
-                {category}
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => {
-                  const isSelected = formData.experience_tag_ids.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => handleTagToggle(tag.id)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        isSelected
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      title={tag.description || ''}
-                    >
-                      {tag.icon && <span className="mr-1">{tag.icon}</span>}
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+      {/* Price Range - Only show for food/drink places */}
+      {shouldShowPriceRange() && (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">
+            Price Range <span className="text-gray-400">(per person)</span>
+          </h3>
+          <p className="text-sm text-gray-600 mb-3">
+            How much did you spend per person approximately?
+          </p>
+          
+          <select
+            value={formData.price_range || ''}
+            onChange={(e) => setFormData({ ...formData, price_range: e.target.value || undefined })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+          >
+            <option value="">Select price range...</option>
+            {PRICE_RANGES.map(range => (
+              <option key={range.value} value={range.value}>
+                {range.label}
+              </option>
+            ))}
+          </select>
         </div>
+      )}
+
+      {/* Experience Tags - Improved UX */}
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">
+              Experience Tags
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              What made this place special?
+            </p>
+          </div>
+          {selectedPlace && (
+            <button
+              type="button"
+              onClick={() => setShowRecommended(!showRecommended)}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {showRecommended ? '✨ Hide' : '✨ Suggest'} 
+            </button>
+          )}
+        </div>
+
+        {/* Quick Presets */}
+        <div className="mb-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Quick Presets
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {quickPresets.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => applyPreset(preset.tags)}
+                className="group p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+              >
+                <div className="font-medium text-sm text-gray-900 group-hover:text-blue-600">
+                  {preset.name}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {preset.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Recommended Tags */}
+        {showRecommended && selectedPlace && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs font-medium text-blue-900 mb-2">
+              ✨ Recommended for {selectedPlace.place_type?.name}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {getRecommendedTagIds().map(tagId => {
+                const tag = experienceTags.find(t => t.id === tagId);
+                if (!tag) return null;
+                
+                const isSelected = formData.experience_tag_ids.includes(tagId);
+                return (
+                  <button
+                    key={tagId}
+                    type="button"
+                    onClick={() => handleTagToggle(tagId)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                    }`}
+                  >
+                    {tag.icon && <span className="mr-1">{tag.icon}</span>}
+                    {EXPERIENCE_TAG_LABELS[tag.slug] || tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Grouped Tags */}
+        <div className="space-y-4">
+          {Object.entries(TAG_GROUPS).map(([groupKey, groupTags]) => {
+            // Filter to only show tags that exist in database
+            const availableTags = experienceTags.filter(tag => 
+              (groupTags as readonly string[]).includes(tag.slug)
+            );
+            
+            if (availableTags.length === 0) return null;
+
+            return (
+              <div key={groupKey}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700">
+                    {TAG_GROUP_LABELS[groupKey as keyof typeof TAG_GROUP_LABELS]}
+                  </h4>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map(tag => {
+                    const isSelected = formData.experience_tag_ids.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => handleTagToggle(tag.id)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all transform hover:scale-105 ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                        }`}
+                        title={tag.description || ''}
+                      >
+                        {tag.icon && <span className="mr-1.5">{tag.icon}</span>}
+                        {EXPERIENCE_TAG_LABELS[tag.slug] || tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Selected Count */}
+        {formData.experience_tag_ids.length > 0 && (
+          <div className="mt-4 p-2 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800">
+              ✓ {formData.experience_tag_ids.length} tag{formData.experience_tag_ids.length !== 1 ? 's' : ''} selected
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Comment */}

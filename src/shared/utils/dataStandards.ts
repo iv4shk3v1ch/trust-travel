@@ -1,538 +1,414 @@
 /**
  * DATA STANDARDS FOR TRUST TRAVEL
+ * Updated: 2026-01-23
  * 
- * This file defines standardized data structures, categories, and naming conventions
- * to ensure consistency across the application. All place categories, tags, and
- * review data should follow these standards.
+ * This file defines standardized data structures following the new hierarchical schema:
+ * - 5 main categories
+ * - 18 subcategories  
+ * - 25 experience tags (22 core + 3 dietary)
+ * - Service types for food/drink places
  * 
- * DO NOT create variations or synonyms - stick to these exact terms.
+ * IMPORTANT: These match the database schema exactly. Do not modify without updating DB.
  */
 
 // ============================================================================
-// PLACE CATEGORIES
+// MAIN CATEGORIES (5 - Hierarchical Parent Categories)
 // ============================================================================
 
-/**
- * Standardized place categories - Use these exact names everywhere
- * Each category covers multiple sub-types to avoid duplication
- */
+export const MAIN_CATEGORIES = {
+  FOOD_DRINK: 'food_drink',
+  NIGHTLIFE: 'nightlife',
+  CULTURE_SIGHTS: 'culture_sights',
+  NATURE_OUTDOOR: 'nature_outdoor',
+  SHOPPING_ACTIVITIES: 'shopping_activities',
+} as const;
+
+export const MAIN_CATEGORY_LABELS: Record<string, string> = {
+  [MAIN_CATEGORIES.FOOD_DRINK]: 'Food & Drink',
+  [MAIN_CATEGORIES.NIGHTLIFE]: 'Nightlife',
+  [MAIN_CATEGORIES.CULTURE_SIGHTS]: 'Culture & Sights',
+  [MAIN_CATEGORIES.NATURE_OUTDOOR]: 'Nature & Outdoor',
+  [MAIN_CATEGORIES.SHOPPING_ACTIVITIES]: 'Shopping & Activities',
+};
+
+export const MAIN_CATEGORY_ICONS: Record<string, string> = {
+  [MAIN_CATEGORIES.FOOD_DRINK]: '🍽️',
+  [MAIN_CATEGORIES.NIGHTLIFE]: '🌙',
+  [MAIN_CATEGORIES.CULTURE_SIGHTS]: '🏛️',
+  [MAIN_CATEGORIES.NATURE_OUTDOOR]: '🌳',
+  [MAIN_CATEGORIES.SHOPPING_ACTIVITIES]: '🛍️',
+};
+
+// ============================================================================
+// PLACE SUBCATEGORIES (18 - Actual Place Types)
+// ============================================================================
+
 export const PLACE_CATEGORIES = {
+  // Food & Drink (4)
+  RESTAURANT: 'restaurant',
+  STREET_FOOD: 'street_food',
+  CAFE: 'cafe',
+  BAR: 'bar',
+  
+  // Nightlife (1)
+  NIGHTCLUB: 'nightclub',
+  
+  // Culture & Sights (4)
+  MUSEUM: 'museum',
+  ART_GALLERY: 'art_gallery',
+  HISTORICAL_SITE: 'historical_site',
+  LANDMARK: 'landmark',
+  
+  // Nature & Outdoor (4)
+  PARK: 'park',
+  VIEWPOINT: 'viewpoint',
+  HIKING_TRAIL: 'hiking_trail',
+  LAKE_RIVER_BEACH: 'lake_river_beach',
+  
+  // Shopping & Activities (5)
+  MARKET: 'market',
+  SHOPPING_AREA: 'shopping_area',
+  ENTERTAINMENT_VENUE: 'entertainment_venue',
+  SPA_WELLNESS: 'spa_wellness',
+} as const;
+
+// Map subcategories to their parent main category
+export const SUBCATEGORY_TO_MAIN: Record<string, string> = {
   // Food & Drink
-  RESTAURANT: 'restaurant',           // All dining: fine dining, casual, cafe
-  BAR: 'bar',                        // All bars: pub, wine bar, cocktail bar, sports bar
-  COFFEE_SHOP: 'coffee-shop',        // Coffee shops, tea houses, cafes with minimal food
-  FAST_FOOD: 'fast-food',            // Fast food chains, quick service restaurants
+  [PLACE_CATEGORIES.RESTAURANT]: MAIN_CATEGORIES.FOOD_DRINK,
+  [PLACE_CATEGORIES.STREET_FOOD]: MAIN_CATEGORIES.FOOD_DRINK,
+  [PLACE_CATEGORIES.CAFE]: MAIN_CATEGORIES.FOOD_DRINK,
+  [PLACE_CATEGORIES.BAR]: MAIN_CATEGORIES.FOOD_DRINK,
+  
+  // Nightlife
+  [PLACE_CATEGORIES.NIGHTCLUB]: MAIN_CATEGORIES.NIGHTLIFE,
+  
+  // Culture & Sights
+  [PLACE_CATEGORIES.MUSEUM]: MAIN_CATEGORIES.CULTURE_SIGHTS,
+  [PLACE_CATEGORIES.ART_GALLERY]: MAIN_CATEGORIES.CULTURE_SIGHTS,
+  [PLACE_CATEGORIES.HISTORICAL_SITE]: MAIN_CATEGORIES.CULTURE_SIGHTS,
+  [PLACE_CATEGORIES.LANDMARK]: MAIN_CATEGORIES.CULTURE_SIGHTS,
+  
+  // Nature & Outdoor
+  [PLACE_CATEGORIES.PARK]: MAIN_CATEGORIES.NATURE_OUTDOOR,
+  [PLACE_CATEGORIES.VIEWPOINT]: MAIN_CATEGORIES.NATURE_OUTDOOR,
+  [PLACE_CATEGORIES.HIKING_TRAIL]: MAIN_CATEGORIES.NATURE_OUTDOOR,
+  [PLACE_CATEGORIES.LAKE_RIVER_BEACH]: MAIN_CATEGORIES.NATURE_OUTDOOR,
+  
+  // Shopping & Activities
+  [PLACE_CATEGORIES.MARKET]: MAIN_CATEGORIES.SHOPPING_ACTIVITIES,
+  [PLACE_CATEGORIES.SHOPPING_AREA]: MAIN_CATEGORIES.SHOPPING_ACTIVITIES,
+  [PLACE_CATEGORIES.ENTERTAINMENT_VENUE]: MAIN_CATEGORIES.SHOPPING_ACTIVITIES,
+  [PLACE_CATEGORIES.SPA_WELLNESS]: MAIN_CATEGORIES.SHOPPING_ACTIVITIES,
+};
 
+export const PLACE_CATEGORY_LABELS: Record<string, string> = {
+  [PLACE_CATEGORIES.RESTAURANT]: 'Restaurant',
+  [PLACE_CATEGORIES.STREET_FOOD]: 'Street Food',
+  [PLACE_CATEGORIES.CAFE]: 'Cafe',
+  [PLACE_CATEGORIES.BAR]: 'Bar',
+  [PLACE_CATEGORIES.NIGHTCLUB]: 'Nightclub',
+  [PLACE_CATEGORIES.MUSEUM]: 'Museum',
+  [PLACE_CATEGORIES.ART_GALLERY]: 'Art Gallery',
+  [PLACE_CATEGORIES.HISTORICAL_SITE]: 'Historical Site',
+  [PLACE_CATEGORIES.LANDMARK]: 'Landmark',
+  [PLACE_CATEGORIES.PARK]: 'Park',
+  [PLACE_CATEGORIES.VIEWPOINT]: 'Viewpoint',
+  [PLACE_CATEGORIES.HIKING_TRAIL]: 'Hiking Trail',
+  [PLACE_CATEGORIES.LAKE_RIVER_BEACH]: 'Lake/River/Beach',
+  [PLACE_CATEGORIES.MARKET]: 'Market',
+  [PLACE_CATEGORIES.SHOPPING_AREA]: 'Shopping Area',
+  [PLACE_CATEGORIES.ENTERTAINMENT_VENUE]: 'Entertainment Venue',
+  [PLACE_CATEGORIES.SPA_WELLNESS]: 'Spa & Wellness',
+};
 
-  // Accommodation
-  HOTEL: 'hotel',                    // Hotels, resorts, motels, inns
-  HOSTEL: 'hostel',                  // Budget accommodation, backpacker hostels
-  VACATION_RENTAL: 'vacation-rental', // Airbnb, apartments, houses, villas
-  
-  // Entertainment & Nightlife
-  CLUB: 'club',                      // Nightclubs, dance clubs
-  THEATER: 'theater',                // Theaters, cinemas, opera houses
-  MUSIC_VENUE: 'music-venue',        // Concert halls, live music venues, karaoke
-  
-  // Culture & Education
-  MUSEUM: 'museum',                  // Museums, galleries, exhibitions
-  HISTORICAL_SITE: 'historical-site', // Monuments, ruins, heritage sites
-  RELIGIOUS_SITE: 'religious-site',  // Churches, temples, mosques, synagogues
-  
-  // Nature & Outdoors
-  PARK: 'park',                      // Parks, gardens, reserves
-  BEACH: 'beach',                    // Beaches, lakeshores, waterfront
-  HIKING_TRAIL: 'hiking-trail',      // Trails, nature walks, trekking routes
-  VIEWPOINT: 'viewpoint',            // Scenic overlooks, observation decks
-  
-  // Activities & Sports
-  ADVENTURE_ACTIVITY: 'adventure-activity', // Zip-lining, bungee, extreme sports
-  WATER_ACTIVITY: 'water-activity',  // Diving, surfing, boating, swimming
-  SPORTS_FACILITY: 'sports-facility', // Gyms, stadiums, courts, fields
-  
-  // Shopping & Services
-  SHOPPING: 'shopping',              // Malls, markets, boutiques, stores
-  SPA_WELLNESS: 'spa-wellness',      // Spas, wellness centers, massage
-  
-  // Transportation & Infrastructure
-  TRANSPORT_HUB: 'transport-hub',    // Airports, train stations, bus terminals
-  
-  // Other
-  ATTRACTION: 'attraction',          // Tourist attractions, landmarks
-  EVENT_VENUE: 'event-venue',       // Convention centers, event spaces
+// ============================================================================
+// EXPERIENCE TAGS (25 Total: 22 Core + 3 Dietary)
+// ============================================================================
+
+// Offering Tags (4) - What's available
+export const OFFERING_TAGS = {
+  FOOD: 'food',
+  DRINKS: 'drinks',
+  COFFEE: 'coffee',
+  BAKERY: 'bakery',
 } as const;
 
-export type PlaceCategory = typeof PLACE_CATEGORIES[keyof typeof PLACE_CATEGORIES];
+// Timing Tags (4) - When to visit
+export const TIMING_TAGS = {
+  MORNING: 'morning',
+  AFTERNOON: 'afternoon',
+  EVENING: 'evening',
+  LATE_NIGHT: 'late_night',
+} as const;
 
-// ============================================================================
-// EXPERIENCE TAGS
-// ============================================================================
+// Duration Tags (2) - How long to stay
+export const DURATION_TAGS = {
+  QUICK_STOP: 'quick_stop',
+  LONG_STAY: 'long_stay',
+} as const;
 
-/**
- * Standardized experience tags - Use these exact names everywhere
- * These tags are designed for recommender systems and capture key dimensions:
- * - Who to visit with (social context)
- * - Main value proposition (what makes it special)
- * - Experience type and atmosphere
- * - Important practical considerations
- */
+// Social Tags (5) - Who to go with
+export const SOCIAL_TAGS = {
+  SOLO: 'solo',
+  FRIENDS: 'friends',
+  DATE: 'date',
+  FAMILY: 'family',
+  WITH_PET: 'with_pet',
+} as const;
+
+// Atmosphere Tags (4) - Vibe & feeling
+export const ATMOSPHERE_TAGS = {
+  CALM: 'calm',
+  LIVELY: 'lively',
+  ROMANTIC: 'romantic',
+  AUTHENTIC_LOCAL: 'authentic_local',
+} as const;
+
+// Practical Tags (3) - Useful signals
+export const PRACTICAL_TAGS = {
+  BUDGET_FRIENDLY: 'budget_friendly',
+  SCENIC_VIEW: 'scenic_view',
+  HIDDEN_GEM: 'hidden_gem',
+} as const;
+
+// Dietary Tags (3) - Food restrictions
+export const DIETARY_TAGS = {
+  VEGAN: 'vegan',
+  HALAL: 'halal',
+  GLUTEN_FREE: 'gluten_free',
+} as const;
+
+// All experience tags combined
 export const EXPERIENCE_TAGS = {
-  // === SOCIAL CONTEXT (Who to visit with) ===
-  ROMANTIC: 'romantic',              // Perfect for couples/dates
-  FAMILY_FRIENDLY: 'family-friendly', // Good for families with children
-  FRIENDS_GROUP: 'friends-group',     // Great for groups of friends
-  SOLO_FRIENDLY: 'solo-friendly',     // Comfortable for solo travelers
-  
-  // === VALUE PROPOSITION (What makes it special) ===
-  UNIQUE_ARCHITECTURE: 'unique-architecture', // Notable building/design
-  EXCEPTIONAL_FOOD: 'exceptional-food',       // Outstanding culinary experience
-  CULTURAL_IMMERSION: 'cultural-immersion',   // Authentic local culture
-  SCENIC_BEAUTY: 'scenic-beauty',             // Beautiful views/natural beauty
-  HISTORICAL_SIGNIFICANCE: 'historical-significance', // Important historical value
-  
-  // === ATMOSPHERE & EXPERIENCE TYPE ===
-  RELAXING: 'relaxing',              // Calm, peaceful experience
-  ENERGETIC: 'energetic',            // High energy, lively atmosphere
-  INTIMATE: 'intimate',              // Small, cozy, personal setting
-  AUTHENTIC_LOCAL: 'authentic-local', // Real local experience, not touristy
-  
-  // === PRACTICAL CONSIDERATIONS ===
-  BUDGET_FRIENDLY: 'budget-friendly', // Good value, affordable
-  LUXURY: 'luxury',                   // High-end, premium experience
-  CROWD_LEVEL_LOW: 'crowd-level-low', // Usually not crowded
-  CROWD_LEVEL_HIGH: 'crowd-level-high', // Usually busy/crowded
-  QUICK_VISIT: 'quick-visit',         // Can be enjoyed in short time
-  EXTENDED_STAY: 'extended-stay',     // Worth spending several hours
+  ...OFFERING_TAGS,
+  ...TIMING_TAGS,
+  ...DURATION_TAGS,
+  ...SOCIAL_TAGS,
+  ...ATMOSPHERE_TAGS,
+  ...PRACTICAL_TAGS,
+  ...DIETARY_TAGS,
 } as const;
 
+// Tag labels for display
+export const EXPERIENCE_TAG_LABELS: Record<string, string> = {
+  // Offering
+  [OFFERING_TAGS.FOOD]: 'Food',
+  [OFFERING_TAGS.DRINKS]: 'Drinks',
+  [OFFERING_TAGS.COFFEE]: 'Coffee',
+  [OFFERING_TAGS.BAKERY]: 'Bakery',
+  
+  // Timing
+  [TIMING_TAGS.MORNING]: 'Morning',
+  [TIMING_TAGS.AFTERNOON]: 'Afternoon',
+  [TIMING_TAGS.EVENING]: 'Evening',
+  [TIMING_TAGS.LATE_NIGHT]: 'Late Night',
+  
+  // Duration
+  [DURATION_TAGS.QUICK_STOP]: 'Quick Stop',
+  [DURATION_TAGS.LONG_STAY]: 'Long Stay',
+  
+  // Social
+  [SOCIAL_TAGS.SOLO]: 'Solo',
+  [SOCIAL_TAGS.FRIENDS]: 'Friends',
+  [SOCIAL_TAGS.DATE]: 'Date',
+  [SOCIAL_TAGS.FAMILY]: 'Family',
+  [SOCIAL_TAGS.WITH_PET]: 'Pet-Friendly',
+  
+  // Atmosphere
+  [ATMOSPHERE_TAGS.CALM]: 'Calm',
+  [ATMOSPHERE_TAGS.LIVELY]: 'Lively',
+  [ATMOSPHERE_TAGS.ROMANTIC]: 'Romantic',
+  [ATMOSPHERE_TAGS.AUTHENTIC_LOCAL]: 'Authentic Local',
+  
+  // Practical
+  [PRACTICAL_TAGS.BUDGET_FRIENDLY]: 'Budget-Friendly',
+  [PRACTICAL_TAGS.SCENIC_VIEW]: 'Scenic View',
+  [PRACTICAL_TAGS.HIDDEN_GEM]: 'Hidden Gem',
+  
+  // Dietary
+  [DIETARY_TAGS.VEGAN]: 'Vegan Options',
+  [DIETARY_TAGS.HALAL]: 'Halal',
+  [DIETARY_TAGS.GLUTEN_FREE]: 'Gluten-Free',
+};
+
+// Tag groupings for UI display
+export const TAG_GROUPS = {
+  offering: Object.values(OFFERING_TAGS),
+  timing: Object.values(TIMING_TAGS),
+  duration: Object.values(DURATION_TAGS),
+  social: Object.values(SOCIAL_TAGS),
+  atmosphere: Object.values(ATMOSPHERE_TAGS),
+  practical: Object.values(PRACTICAL_TAGS),
+  dietary: Object.values(DIETARY_TAGS),
+} as const;
+
+export const TAG_GROUP_LABELS = {
+  offering: "What's Available",
+  timing: 'When to Visit',
+  duration: 'How Long',
+  social: 'Who With',
+  atmosphere: 'Vibe',
+  practical: 'Highlights',
+  dietary: 'Dietary',
+} as const;
+
+// ============================================================================
+// SERVICE TYPES (Place Feature for Food/Drink)
+// ============================================================================
+
+export const SERVICE_TYPES = {
+  SIT_DOWN: 'sit_down',
+  TAKEAWAY: 'takeaway',
+  COUNTER_SERVICE: 'counter_service',
+} as const;
+
+export const SERVICE_TYPE_LABELS: Record<string, string> = {
+  [SERVICE_TYPES.SIT_DOWN]: 'Sit-down dining',
+  [SERVICE_TYPES.TAKEAWAY]: 'Takeaway',
+  [SERVICE_TYPES.COUNTER_SERVICE]: 'Counter service',
+};
+
+// ============================================================================
+// PRICE CATEGORIES
+// ============================================================================
+
+export const PRICE_CATEGORIES = {
+  BUDGET: 'budget',
+  MODERATE: 'moderate',
+  EXPENSIVE: 'expensive',
+  LUXURY: 'luxury',
+} as const;
+
+export const PRICE_CATEGORY_LABELS: Record<string, string> = {
+  [PRICE_CATEGORIES.BUDGET]: 'Budget (<€10)',
+  [PRICE_CATEGORIES.MODERATE]: 'Moderate (€10-30)',
+  [PRICE_CATEGORIES.EXPENSIVE]: 'Expensive (€30-60)',
+  [PRICE_CATEGORIES.LUXURY]: 'Luxury (>€60)',
+};
+
+export const PRICE_CATEGORY_SYMBOLS: Record<string, string> = {
+  [PRICE_CATEGORIES.BUDGET]: '€',
+  [PRICE_CATEGORIES.MODERATE]: '€€',
+  [PRICE_CATEGORIES.EXPENSIVE]: '€€€',
+  [PRICE_CATEGORIES.LUXURY]: '€€€€',
+};
+
+// ============================================================================
+// INDOOR/OUTDOOR PREFERENCES
+// ============================================================================
+
+export const INDOOR_OUTDOOR = {
+  INDOOR: 'indoor',
+  OUTDOOR: 'outdoor',
+  MIXED: 'mixed',
+} as const;
+
+export const INDOOR_OUTDOOR_LABELS: Record<string, string> = {
+  [INDOOR_OUTDOOR.INDOOR]: 'Indoor',
+  [INDOOR_OUTDOOR.OUTDOOR]: 'Outdoor',
+  [INDOOR_OUTDOOR.MIXED]: 'Both',
+};
+
+// ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+
+export type MainCategory = typeof MAIN_CATEGORIES[keyof typeof MAIN_CATEGORIES];
+export type PlaceCategory = typeof PLACE_CATEGORIES[keyof typeof PLACE_CATEGORIES];
 export type ExperienceTag = typeof EXPERIENCE_TAGS[keyof typeof EXPERIENCE_TAGS];
-
-// ============================================================================
-// REVIEW STANDARDS
-// ============================================================================
-
-/**
- * Standardized review rating categories
- */
-export const REVIEW_CATEGORIES = {
-  OVERALL: 'overall',
-  ATMOSPHERE: 'atmosphere',          // For restaurants, bars
-  SERVICE: 'service',                // For restaurants, hotels, shops
-  FOOD_QUALITY: 'food-quality',      // For restaurants/bars
-} as const;
-
-export type ReviewCategory = typeof REVIEW_CATEGORIES[keyof typeof REVIEW_CATEGORIES];
-
-/**
- * Rating scales by place type - determines which categories to show
- */
-export const RATING_SCALES_BY_PLACE_TYPE = {
-  // Food places: Rate food, service, and atmosphere
-  FOOD_PLACES: [
-    PLACE_CATEGORIES.RESTAURANT,
-    PLACE_CATEGORIES.BAR,
-    PLACE_CATEGORIES.COFFEE_SHOP,
-    PLACE_CATEGORIES.FAST_FOOD,
-  ],
-  
-  // Service places: Rate overall experience and service
-  SERVICE_PLACES: [
-    PLACE_CATEGORIES.HOTEL,
-    PLACE_CATEGORIES.HOSTEL,
-    PLACE_CATEGORIES.SHOPPING,
-    PLACE_CATEGORIES.MUSEUM,
-    PLACE_CATEGORIES.CLUB,
-    PLACE_CATEGORIES.THEATER,
-    PLACE_CATEGORIES.MUSIC_VENUE,
-    PLACE_CATEGORIES.SPA_WELLNESS,
-    PLACE_CATEGORIES.ADVENTURE_ACTIVITY,
-    PLACE_CATEGORIES.WATER_ACTIVITY,
-    PLACE_CATEGORIES.SPORTS_FACILITY,
-    PLACE_CATEGORIES.ATTRACTION,
-    PLACE_CATEGORIES.EVENT_VENUE,
-  ],
-  
-  // Experience places: Rate only overall experience
-  EXPERIENCE_PLACES: [
-    PLACE_CATEGORIES.PARK,
-    PLACE_CATEGORIES.BEACH,
-    PLACE_CATEGORIES.HIKING_TRAIL,
-    PLACE_CATEGORIES.VIEWPOINT,
-    PLACE_CATEGORIES.RELIGIOUS_SITE,
-    PLACE_CATEGORIES.HISTORICAL_SITE,
-    PLACE_CATEGORIES.TRANSPORT_HUB,
-    PLACE_CATEGORIES.VACATION_RENTAL,
-  ],
-} as const;
-
-/**
- * Get required rating categories for a place type
- */
-export function getRatingCategoriesForPlace(placeCategory: PlaceCategory): ReviewCategory[] {
-  // Check if it's a food place
-  const foodPlaces = RATING_SCALES_BY_PLACE_TYPE.FOOD_PLACES as readonly PlaceCategory[];
-  if (foodPlaces.includes(placeCategory)) {
-    return [
-      REVIEW_CATEGORIES.FOOD_QUALITY,
-      REVIEW_CATEGORIES.SERVICE,
-      REVIEW_CATEGORIES.ATMOSPHERE,
-    ];
-  }
-  
-  // Check if it's a service place
-  const servicePlaces = RATING_SCALES_BY_PLACE_TYPE.SERVICE_PLACES as readonly PlaceCategory[];
-  if (servicePlaces.includes(placeCategory)) {
-    return [
-      REVIEW_CATEGORIES.OVERALL,
-      REVIEW_CATEGORIES.SERVICE,
-    ];
-  }
-  
-  // Default to experience places (overall only)
-  return [REVIEW_CATEGORIES.OVERALL];
-}
-
-/**
- * Check if place requires price information (food places)
- */
-export function shouldAskForPrice(placeCategory: PlaceCategory): boolean {
-  const foodPlaces = RATING_SCALES_BY_PLACE_TYPE.FOOD_PLACES as readonly PlaceCategory[];
-  return foodPlaces.includes(placeCategory);
-}
-
-/**
- * Review sentiment categories
- */
-export const REVIEW_SENTIMENTS = {
-  POSITIVE: 'positive',
-  NEUTRAL: 'neutral',
-  NEGATIVE: 'negative',
-} as const;
-
-export type ReviewSentiment = typeof REVIEW_SENTIMENTS[keyof typeof REVIEW_SENTIMENTS];
-
-// ============================================================================
-// PRICE RANGES
-// ============================================================================
-
-/**
- * Standardized price range indicators for general places
- */
-export const PRICE_RANGES = {
-  FREE: 'free',               // Free entry
-  BUDGET: 'budget',           // $ - Under $25 per person
-  MODERATE: 'moderate',       // $$ - $25-75 per person
-  UPSCALE: 'upscale',        // $$$ - $75-150 per person
-  LUXURY: 'luxury',          // $$$$ - Over $150 per person
-} as const;
-
-/**
- * Specific price ranges for food/dining (per person spending)
- */
-export const FOOD_PRICE_RANGES = {
-  RANGE_0_10: '0-10',         // 0-10 euros per person
-  RANGE_10_20: '10-20',       // 10-20 euros per person
-  RANGE_20_35: '20-35',       // 20-35 euros per person
-  RANGE_35_50: '35-50',       // 35-50 euros per person
-  RANGE_50_75: '50-75',       // 50-75 euros per person
-  RANGE_75_100: '75-100',     // 75-100 euros per person
-  RANGE_100_PLUS: '100+',     // 100+ euros per person
-} as const;
-
-export type PriceRange = typeof PRICE_RANGES[keyof typeof PRICE_RANGES];
-export type FoodPriceRange = typeof FOOD_PRICE_RANGES[keyof typeof FOOD_PRICE_RANGES];
+export type ServiceType = typeof SERVICE_TYPES[keyof typeof SERVICE_TYPES];
+export type PriceCategory = typeof PRICE_CATEGORIES[keyof typeof PRICE_CATEGORIES];
+export type IndoorOutdoor = typeof INDOOR_OUTDOOR[keyof typeof INDOOR_OUTDOOR];
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Validates if a category is a valid place category
+ * Get subcategories for a main category
  */
-export function isValidPlaceCategory(category: string): category is PlaceCategory {
-  return Object.values(PLACE_CATEGORIES).includes(category as PlaceCategory);
+export function getSubcategoriesForMain(mainCategory: MainCategory): PlaceCategory[] {
+  return Object.entries(SUBCATEGORY_TO_MAIN)
+    .filter(([, main]) => main === mainCategory)
+    .map(([sub]) => sub as PlaceCategory);
 }
 
 /**
- * Validates if a tag is a valid experience tag
+ * Get main category for a subcategory
  */
-export function isValidExperienceTag(tag: string): tag is ExperienceTag {
-  return Object.values(EXPERIENCE_TAGS).includes(tag as ExperienceTag);
+export function getMainCategoryForSub(subcategory: PlaceCategory): MainCategory {
+  return SUBCATEGORY_TO_MAIN[subcategory] as MainCategory;
 }
 
 /**
- * Get human-readable display name for a category
+ * Check if a place category is food-related (should have service_type)
  */
-export function getCategoryDisplayName(category: PlaceCategory): string {
-  const displayNames: Record<PlaceCategory, string> = {
-    [PLACE_CATEGORIES.RESTAURANT]: 'Restaurant',
-    [PLACE_CATEGORIES.BAR]: 'Bar',
-    [PLACE_CATEGORIES.COFFEE_SHOP]: 'Coffee Shop',
-    [PLACE_CATEGORIES.FAST_FOOD]: 'Fast Food',
-    [PLACE_CATEGORIES.HOTEL]: 'Hotel',
-    [PLACE_CATEGORIES.HOSTEL]: 'Hostel',
-    [PLACE_CATEGORIES.VACATION_RENTAL]: 'Vacation Rental',
-    [PLACE_CATEGORIES.CLUB]: 'Club',
-    [PLACE_CATEGORIES.THEATER]: 'Theater',
-    [PLACE_CATEGORIES.MUSIC_VENUE]: 'Music Venue',
-    [PLACE_CATEGORIES.MUSEUM]: 'Museum',
-    [PLACE_CATEGORIES.HISTORICAL_SITE]: 'Historical Site',
-    [PLACE_CATEGORIES.RELIGIOUS_SITE]: 'Religious Site',
-    [PLACE_CATEGORIES.PARK]: 'Park',
-    [PLACE_CATEGORIES.BEACH]: 'Beach',
-    [PLACE_CATEGORIES.HIKING_TRAIL]: 'Hiking Trail',
-    [PLACE_CATEGORIES.VIEWPOINT]: 'Viewpoint',
-    [PLACE_CATEGORIES.ADVENTURE_ACTIVITY]: 'Adventure Activity',
-    [PLACE_CATEGORIES.WATER_ACTIVITY]: 'Water Activity',
-    [PLACE_CATEGORIES.SPORTS_FACILITY]: 'Sports Facility',
-    [PLACE_CATEGORIES.SHOPPING]: 'Shopping',
-    [PLACE_CATEGORIES.SPA_WELLNESS]: 'Spa & Wellness',
-    [PLACE_CATEGORIES.TRANSPORT_HUB]: 'Transport Hub',
-    [PLACE_CATEGORIES.ATTRACTION]: 'Attraction',
-    [PLACE_CATEGORIES.EVENT_VENUE]: 'Event Venue',
-  };
-  
-  return displayNames[category] || category;
+export function isFoodCategory(category: PlaceCategory): boolean {
+  const foodCategories: PlaceCategory[] = [
+    PLACE_CATEGORIES.RESTAURANT,
+    PLACE_CATEGORIES.STREET_FOOD,
+    PLACE_CATEGORIES.CAFE,
+    PLACE_CATEGORIES.BAR,
+  ];
+  return foodCategories.includes(category);
 }
 
 /**
- * Get human-readable display name for food price ranges
+ * Get recommended tags for a place category
  */
-export function getFoodPriceDisplayName(range: FoodPriceRange): string {
-  const displayNames: Record<FoodPriceRange, string> = {
-    [FOOD_PRICE_RANGES.RANGE_0_10]: '0-10 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_10_20]: '10-20 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_20_35]: '20-35 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_35_50]: '35-50 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_50_75]: '50-75 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_75_100]: '75-100 euros per person',
-    [FOOD_PRICE_RANGES.RANGE_100_PLUS]: '100+ euros per person',
-  };
-  
-  return displayNames[range] || range;
-}
-
-/**
- * Get human-readable display name for rating categories
- */
-export function getRatingCategoryDisplayName(category: ReviewCategory): string {
-  const displayNames: Record<ReviewCategory, string> = {
-    [REVIEW_CATEGORIES.OVERALL]: 'Overall Experience',
-    [REVIEW_CATEGORIES.FOOD_QUALITY]: 'Food Quality',
-    [REVIEW_CATEGORIES.SERVICE]: 'Service',
-    [REVIEW_CATEGORIES.ATMOSPHERE]: 'Atmosphere',
-  };
-  
-  return displayNames[category] || category;
-}
-
-/**
- * Create a review flow configuration for a specific place category
- */
-export interface ReviewFlowConfig {
-  ratingCategories: ReviewCategory[];
-  requiresPrice: boolean;
-  priceLabel?: string;
-  suggestedTags: ExperienceTag[];
-}
-
-export function getReviewFlowConfig(placeCategory: PlaceCategory): ReviewFlowConfig {
-  const ratingCategories = getRatingCategoriesForPlace(placeCategory);
-  const requiresPrice = shouldAskForPrice(placeCategory);
-  const suggestedTags = getRecommendedTagsForCategory(placeCategory);
-  
-  return {
-    ratingCategories,
-    requiresPrice,
-    priceLabel: requiresPrice ? 'How much did you spend per person?' : undefined,
-    suggestedTags,
-  };
-}
-export function getTagDisplayName(tag: ExperienceTag): string {
-  return tag
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-/**
- * Get tags that are commonly associated with a place category
- */
-export function getRecommendedTagsForCategory(category: PlaceCategory): ExperienceTag[] {
-  const categoryTagMappings: Partial<Record<PlaceCategory, ExperienceTag[]>> = {
+export function getRecommendedTags(category: PlaceCategory): ExperienceTag[] {
+  const mappings: Partial<Record<PlaceCategory, ExperienceTag[]>> = {
     [PLACE_CATEGORIES.RESTAURANT]: [
-      EXPERIENCE_TAGS.FAMILY_FRIENDLY,
+      EXPERIENCE_TAGS.FOOD,
+      EXPERIENCE_TAGS.FAMILY,
+      EXPERIENCE_TAGS.DATE,
       EXPERIENCE_TAGS.ROMANTIC,
-      EXPERIENCE_TAGS.FRIENDS_GROUP,
-      EXPERIENCE_TAGS.BUDGET_FRIENDLY,
-      EXPERIENCE_TAGS.LUXURY,
-      EXPERIENCE_TAGS.EXCEPTIONAL_FOOD,
-      EXPERIENCE_TAGS.INTIMATE,
-      EXPERIENCE_TAGS.ENERGETIC,
+      EXPERIENCE_TAGS.LIVELY,
+    ],
+    [PLACE_CATEGORIES.CAFE]: [
+      EXPERIENCE_TAGS.COFFEE,
+      EXPERIENCE_TAGS.BAKERY,
+      EXPERIENCE_TAGS.SOLO,
+      EXPERIENCE_TAGS.CALM,
+      EXPERIENCE_TAGS.MORNING,
     ],
     [PLACE_CATEGORIES.BAR]: [
-      EXPERIENCE_TAGS.ENERGETIC,
-      EXPERIENCE_TAGS.FRIENDS_GROUP,
-      EXPERIENCE_TAGS.ROMANTIC,
-      EXPERIENCE_TAGS.INTIMATE,
-      EXPERIENCE_TAGS.AUTHENTIC_LOCAL,
-      EXPERIENCE_TAGS.CROWD_LEVEL_HIGH,
-      EXPERIENCE_TAGS.EXTENDED_STAY,
+      EXPERIENCE_TAGS.DRINKS,
+      EXPERIENCE_TAGS.FRIENDS,
+      EXPERIENCE_TAGS.LIVELY,
+      EXPERIENCE_TAGS.EVENING,
+      EXPERIENCE_TAGS.LATE_NIGHT,
     ],
-    [PLACE_CATEGORIES.BEACH]: [
-      EXPERIENCE_TAGS.RELAXING,
-      EXPERIENCE_TAGS.SCENIC_BEAUTY,
-      EXPERIENCE_TAGS.FAMILY_FRIENDLY,
-      EXPERIENCE_TAGS.FRIENDS_GROUP,
-      EXPERIENCE_TAGS.CROWD_LEVEL_HIGH,
-      EXPERIENCE_TAGS.CROWD_LEVEL_LOW,
-      EXPERIENCE_TAGS.EXTENDED_STAY,
+    [PLACE_CATEGORIES.NIGHTCLUB]: [
+      EXPERIENCE_TAGS.DRINKS,
+      EXPERIENCE_TAGS.FRIENDS,
+      EXPERIENCE_TAGS.LIVELY,
+      EXPERIENCE_TAGS.LATE_NIGHT,
+      EXPERIENCE_TAGS.LONG_STAY,
     ],
     [PLACE_CATEGORIES.MUSEUM]: [
-      EXPERIENCE_TAGS.HISTORICAL_SIGNIFICANCE,
-      EXPERIENCE_TAGS.CULTURAL_IMMERSION,
-      EXPERIENCE_TAGS.FAMILY_FRIENDLY,
-      EXPERIENCE_TAGS.SOLO_FRIENDLY,
-      EXPERIENCE_TAGS.UNIQUE_ARCHITECTURE,
-      EXPERIENCE_TAGS.QUICK_VISIT,
+      EXPERIENCE_TAGS.SOLO,
+      EXPERIENCE_TAGS.FAMILY,
+      EXPERIENCE_TAGS.CALM,
+      EXPERIENCE_TAGS.LONG_STAY,
+      EXPERIENCE_TAGS.AUTHENTIC_LOCAL,
     ],
-    // Add more mappings as needed
+    [PLACE_CATEGORIES.PARK]: [
+      EXPERIENCE_TAGS.FAMILY,
+      EXPERIENCE_TAGS.WITH_PET,
+      EXPERIENCE_TAGS.CALM,
+      EXPERIENCE_TAGS.SCENIC_VIEW,
+      EXPERIENCE_TAGS.LONG_STAY,
+    ],
+    [PLACE_CATEGORIES.VIEWPOINT]: [
+      EXPERIENCE_TAGS.SOLO,
+      EXPERIENCE_TAGS.DATE,
+      EXPERIENCE_TAGS.SCENIC_VIEW,
+      EXPERIENCE_TAGS.QUICK_STOP,
+      EXPERIENCE_TAGS.ROMANTIC,
+    ],
   };
 
-  return categoryTagMappings[category] || [];
-}
-
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
-
-/**
- * Standard place data structure
- */
-export interface StandardPlace {
-  id: string;
-  name: string;
-  category: PlaceCategory;
-  tags: ExperienceTag[];
-  priceRange?: PriceRange;
-  location: {
-    address: string;
-    city: string;
-    country: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  description?: string;
-  openingHours?: string;
-  website?: string;
-  phone?: string;
-  averageRating?: number;
-  reviewCount?: number;
-}
-
-/**
- * Standard review data structure
- */
-export interface StandardReview {
-  id: string;
-  placeId: string;
-  userId: string;
-  ratings: Partial<Record<ReviewCategory, number>>; // 1-5 scale
-  comment?: string;
-  photoUrl?: string;                    // Optional photo of the experience
-  tags: ExperienceTag[];               // Experience tags from the standard list
-  sentiment: ReviewSentiment;
-  visitDate?: string;
-  createdAt: string;
-  updatedAt: string;
-  helpful?: number;                    // Number of helpful votes
-  
-  // Price information (for food places)
-  foodPriceRange?: FoodPriceRange;     // Per-person spending for food places
-  
-  // Verification & Trust
-  verified?: boolean;                  // If the review has been verified
-  verificationMethod?: 'photo' | 'receipt' | 'location' | 'manual';
-}
-
-// ============================================================================
-// VALIDATION SCHEMAS
-// ============================================================================
-
-/**
- * Validates a place object against standards
- */
-export function validatePlace(place: Partial<StandardPlace>): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!place.name) {
-    errors.push('Place name is required');
-  }
-
-  if (!place.category || !isValidPlaceCategory(place.category)) {
-    errors.push('Valid place category is required');
-  }
-
-  if (place.tags) {
-    const invalidTags = place.tags.filter(tag => !isValidExperienceTag(tag));
-    if (invalidTags.length > 0) {
-      errors.push(`Invalid tags: ${invalidTags.join(', ')}`);
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors
-  };
-}
-
-/**
- * Validates a review object against standards
- */
-export function validateReview(review: Partial<StandardReview>): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!review.placeId) {
-    errors.push('Place ID is required');
-  }
-
-  if (!review.userId) {
-    errors.push('User ID is required');
-  }
-
-  if (!review.ratings || Object.keys(review.ratings).length === 0) {
-    errors.push('At least one rating is required');
-  }
-
-  // Validate rating values (1-5 scale)
-  if (review.ratings) {
-    Object.entries(review.ratings).forEach(([category, rating]) => {
-      if (rating !== undefined && (rating < 1 || rating > 5)) {
-        errors.push(`Rating for ${category} must be between 1 and 5`);
-      }
-    });
-  }
-
-  if (review.tags) {
-    const invalidTags = review.tags.filter(tag => !isValidExperienceTag(tag));
-    if (invalidTags.length > 0) {
-      errors.push(`Invalid tags: ${invalidTags.join(', ')}`);
-    }
-  }
-
-  if (review.sentiment && !Object.values(REVIEW_SENTIMENTS).includes(review.sentiment)) {
-    errors.push('Valid sentiment is required');
-  }
-
-  // Validate food price range if provided
-  if (review.foodPriceRange && !Object.values(FOOD_PRICE_RANGES).includes(review.foodPriceRange)) {
-    errors.push('Invalid food price range');
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors
-  };
+  return mappings[category] || [];
 }

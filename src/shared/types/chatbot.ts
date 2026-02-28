@@ -12,7 +12,8 @@ export interface ChatbotPreferences {
   categories: string[];
   experienceTags: string[];
   destination: string;
-  budget: 'low' | 'medium' | 'high';
+  budget?: 'low' | 'medium' | 'high'; // Made optional - now using price_category
+  price_category?: 'budget' | 'moderate' | 'expensive' | 'luxury'; // NEW: replaces budget
   summary: string;
   intent?: 'goal-oriented' | 'discovery' | 'informational'; // Added: parsed from chatbot JSON response
 }
