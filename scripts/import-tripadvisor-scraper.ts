@@ -40,7 +40,7 @@ const CITY_ID_MAP: Record<string, string> = {
   'g187849': 'Milan',
   'g187791': 'Rome',
   'g187895': 'Florence',
-  'g187870': 'Trento'
+  'g187861': 'Trento'
 };
 
 // Transport-related keywords to filter out (case-insensitive)

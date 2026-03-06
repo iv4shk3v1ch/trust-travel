@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { RecommendedPlace } from '@/core/services/recommendationEngineV2';
+import type { RecommendedPlace } from '@/core/services/recommender';
 
 // Fix Leaflet default icon issue with Next.js
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,12 +20,20 @@ L.Icon.Default.mergeOptions({
 });
 
 interface ExploreMapProps {
+  city: string;
   places: RecommendedPlace[];
   selectedPlace: RecommendedPlace | null;
   onPlaceClick: (place: RecommendedPlace) => void;
 }
 
-export default function ExploreMap({ places, selectedPlace, onPlaceClick }: ExploreMapProps) {
+const CITY_MAP_CONFIG: Record<string, { center: [number, number]; zoom: number }> = {
+  Trento: { center: [46.0664, 11.1257], zoom: 13 },
+  Milan: { center: [45.4642, 9.19], zoom: 12 },
+  Rome: { center: [41.9028, 12.4964], zoom: 12 },
+  Florence: { center: [43.7696, 11.2558], zoom: 13 }
+};
+
+export default function ExploreMap({ city, places, selectedPlace, onPlaceClick }: ExploreMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
@@ -35,7 +43,8 @@ export default function ExploreMap({ places, selectedPlace, onPlaceClick }: Expl
   useEffect(() => {
     if (typeof window === 'undefined' || mapRef.current) return;
 
-    const map = L.map('explore-map').setView([46.0664, 11.1257], 13); // Trento center
+    const initialConfig = CITY_MAP_CONFIG[city] || CITY_MAP_CONFIG.Trento;
+    const map = L.map('explore-map').setView(initialConfig.center, initialConfig.zoom);
     const markers = new Map<string, L.Marker>();
     markersRef.current = markers;
 
@@ -53,7 +62,14 @@ export default function ExploreMap({ places, selectedPlace, onPlaceClick }: Expl
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [city]);
+
+  useEffect(() => {
+    if (!mapRef.current || places.length > 0) return;
+    const config = CITY_MAP_CONFIG[city] || CITY_MAP_CONFIG.Trento;
+    mapRef.current.setView(config.center, config.zoom, { animate: true });
+    initialBoundsRef.current = null;
+  }, [city, places.length]);
 
   // Update markers when places change
   useEffect(() => {

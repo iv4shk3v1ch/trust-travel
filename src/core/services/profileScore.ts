@@ -24,7 +24,8 @@ export function calculateProfileCompleteness(profile: DatabaseProfile): {
     { key: 'age', name: 'Age' },
     { key: 'gender', name: 'Gender' },
     { key: 'budget', name: 'Budget Level' },
-    { key: 'trip_style', name: 'Trip Style' }
+    { key: 'home_city', name: 'Home City' },
+    { key: 'onboarding_completed_at', name: 'Taste Seed Setup' }
   ];
 
   const optionalFields = [

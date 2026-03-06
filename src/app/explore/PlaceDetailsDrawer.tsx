@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import type { RecommendedPlace } from '@/core/services/recommendationEngineV2';
+import type { RecommendedPlace } from '@/core/services/recommender';
 
 interface PlaceDetailsDrawerProps {
   place: RecommendedPlace | null;

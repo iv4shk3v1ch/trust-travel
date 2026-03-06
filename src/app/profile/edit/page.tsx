@@ -1,53 +1,76 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
 import { DatabaseProfile, saveNewProfile } from '@/core/database/newDatabase';
+import { loadUserSeedRatings, saveUserSeedRatings } from '@/core/database/onboardingSeeds';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { Header } from '@/shared/components/Header';
 import { Footer } from '@/shared/components/Footer';
-import { CategoryPreferences } from '../CategoryPreferences';
+import { AnchorSeedSelector } from '@/features/profile/components/AnchorSeedSelector';
+import { getAnchorPlacesForCity, type SeedRatingValue, type SupportedCity } from '@/shared/config/anchorPlaces';
 
 export default function ProfileEditPage() {
   const router = useRouter();
   const { user, profile: existingProfile, loading: authLoading, refreshProfile } = useAuthContext();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [showPreferences, setShowPreferences] = useState(false);
-  
+  const [seedRatings, setSeedRatings] = useState<Record<string, SeedRatingValue>>({});
+
   const [formData, setFormData] = useState({
     full_name: '',
     age: '',
     gender: '' as 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | '',
     budget: 'medium' as 'low' | 'medium' | 'high',
-    env_preference: '' as 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' | '',
-    activity_style: '' as 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' | '',
+    home_city: '' as SupportedCity | '',
     food_restrictions: ''
   });
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [authLoading, user, router]);
 
-  // Load profile data when available
   useEffect(() => {
-    if (existingProfile) {
-      setFormData({
-        full_name: existingProfile.full_name || '',
-        age: existingProfile.age?.toString() || '',
-        gender: existingProfile.gender || '',
-        budget: existingProfile.budget || 'medium',
-        env_preference: existingProfile.env_preference || '',
-        activity_style: existingProfile.activity_style || '',
-        food_restrictions: existingProfile.food_restrictions || ''
-      });
-    }
+    if (!existingProfile) return;
+
+    setFormData({
+      full_name: existingProfile.full_name || '',
+      age: existingProfile.age?.toString() || '',
+      gender: existingProfile.gender || '',
+      budget: existingProfile.budget || 'medium',
+      home_city: (existingProfile.home_city as SupportedCity | null) || '',
+      food_restrictions: existingProfile.food_restrictions || ''
+    });
   }, [existingProfile]);
+
+  useEffect(() => {
+    const loadSeeds = async () => {
+      if (!user || !formData.home_city) {
+        setSeedRatings({});
+        return;
+      }
+
+      try {
+        const rows = await loadUserSeedRatings(user.id, formData.home_city);
+        setSeedRatings(rows);
+      } catch (loadError) {
+        console.error('Error loading seed ratings:', loadError);
+      }
+    };
+
+    loadSeeds();
+  }, [user, formData.home_city]);
+
+  const anchors = useMemo(
+    () => (formData.home_city ? getAnchorPlacesForCity(formData.home_city) : []),
+    [formData.home_city]
+  );
+
+  const answeredCount = anchors.filter(anchor => seedRatings[anchor.id] != null).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,34 +78,55 @@ export default function ProfileEditPage() {
     setSaving(true);
 
     try {
-      // Validate required fields
-      if (!formData.full_name || !formData.age || !formData.gender) {
-        setError('Please fill in all required fields (Name, Age, Gender)');
-        setSaving(false);
-        return;
+      if (!formData.full_name || !formData.age || !formData.gender || !formData.home_city) {
+        throw new Error('Name, age, gender, and home city are required.');
+      }
+
+      if (answeredCount < 8) {
+        throw new Error('Rate at least 8 anchor places so the onboarding signal is strong enough.');
       }
 
       const profileData: Omit<DatabaseProfile, 'id' | 'updated_at'> = {
         full_name: formData.full_name,
-        age: parseInt(formData.age),
-        gender: formData.gender as 'male' | 'female' | 'non-binary' | 'prefer-not-to-say',
-        budget: formData.budget as 'low' | 'medium' | 'high',
-        env_preference: formData.env_preference || null,
-        activity_style: formData.activity_style || null,
-        food_restrictions: formData.food_restrictions || ''
+        age: parseInt(formData.age, 10),
+        gender: formData.gender as DatabaseProfile['gender'],
+        budget: formData.budget,
+        home_city: formData.home_city,
+        food_restrictions: formData.food_restrictions || '',
+        onboarding_completed_at: new Date().toISOString()
       };
 
       await saveNewProfile(profileData);
-      
-      // Refresh profile in AuthContext
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const seedRows = anchors
+        .filter(anchor => seedRatings[anchor.id] != null)
+        .map(anchor => ({
+          user_id: user.id,
+          city: formData.home_city as SupportedCity,
+          anchor_key: anchor.id,
+          anchor_name: anchor.title,
+          concept_key: anchor.concept,
+          place_category: anchor.category,
+          main_category: anchor.mainCategory,
+          experience_tags: [...anchor.experienceTags],
+          rating: seedRatings[anchor.id] as number
+        }));
+
+      await saveUserSeedRatings(user.id, formData.home_city as SupportedCity, seedRows);
       await refreshProfile();
-      
       router.push('/profile');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save profile');
+    } catch (saveError) {
+      console.error('Error saving profile:', saveError);
+      setError(saveError instanceof Error ? saveError.message : 'Failed to save profile');
       setSaving(false);
+      return;
     }
+
+    setSaving(false);
   };
 
   if (authLoading) {
@@ -104,10 +148,8 @@ export default function ProfileEditPage() {
     <>
       <Header />
       <div className="min-h-screen bg-gray-50 py-6">
-        <div className="max-w-2xl mx-auto px-4">
-          
-          {/* Back Navigation */}
-          <button 
+        <div className="max-w-4xl mx-auto px-4">
+          <button
             onClick={() => router.push('/profile')}
             className="flex items-center text-gray-600 hover:text-blue-600 transition-colors mb-6"
           >
@@ -116,33 +158,23 @@ export default function ProfileEditPage() {
             </svg>
           </button>
 
-          {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Edit Profile
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Edit Profile</h1>
             <p className="text-gray-600">
-              Update your travel preferences and personal information
+              Set your home city and seed your taste profile for cross-city recommendations.
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Basic Information */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">
-                Basic Information
-              </h3>
-              
-              <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name <span className="text-red-500">*</span>
@@ -155,7 +187,6 @@ export default function ProfileEditPage() {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Age <span className="text-red-500">*</span>
@@ -170,14 +201,13 @@ export default function ProfileEditPage() {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Gender <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | '' })}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as typeof formData.gender })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     required
                   >
@@ -188,262 +218,53 @@ export default function ProfileEditPage() {
                     <option value="prefer-not-to-say">Prefer not to say</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                  <select
+                    value={formData.budget}
+                    onChange={(e) => setFormData({ ...formData, budget: e.target.value as typeof formData.budget })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="low">Budget</option>
+                    <option value="medium">Moderate</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
+                  <textarea
+                    value={formData.food_restrictions}
+                    onChange={(e) => setFormData({ ...formData, food_restrictions: e.target.value })}
+                    placeholder="Optional dietary notes"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Travel Preferences */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">
-                Travel Preferences
-              </h3>
-              
-              <div className="space-y-6">
-                {/* Budget Slider (3 states) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Budget <span className="text-red-500">*</span>
-                  </label>
-                  <div className="space-y-4">
-                    <input
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="1"
-                      value={formData.budget === 'low' ? 1 : formData.budget === 'medium' ? 2 : 3}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        const budgetMap: { [key: number]: 'low' | 'medium' | 'high' } = {
-                          1: 'low',
-                          2: 'medium',
-                          3: 'high'
-                        };
-                        setFormData({ ...formData, budget: budgetMap[value] });
-                      }}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      required
-                    />
-                    <div className="flex justify-between px-1">
-                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'low' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">💰</span>
-                        <span className="text-xs font-medium text-gray-700 text-center">Budget</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'medium' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">💵</span>
-                        <span className="text-xs font-medium text-gray-700 text-center">Moderate</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.budget === 'high' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">💎</span>
-                        <span className="text-xs font-medium text-gray-700 text-center">Luxury</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Environment Slider (5 states) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Environment Preference
-                  </label>
-                  <div className="space-y-4">
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      step="1"
-                      value={
-                        formData.env_preference === 'nature' ? 1 :
-                        formData.env_preference === 'mostly-nature' ? 2 :
-                        formData.env_preference === 'balanced' ? 3 :
-                        formData.env_preference === 'mostly-city' ? 4 :
-                        formData.env_preference === 'city' ? 5 : 3
-                      }
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        const envMap: { [key: number]: 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' } = {
-                          1: 'nature',
-                          2: 'mostly-nature',
-                          3: 'balanced',
-                          4: 'mostly-city',
-                          5: 'city'
-                        };
-                        setFormData({ ...formData, env_preference: envMap[value] });
-                      }}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
-                    />
-                    <div className="flex justify-between px-1">
-                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'nature' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🌲</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Nature</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'mostly-nature' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🌳</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Nature</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'balanced' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">⚖️</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Balanced</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'mostly-city' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🌆</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>City</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.env_preference === 'city' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🏙️</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">City</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Activity Style Slider (5 states) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Activity Style
-                  </label>
-                  <div className="space-y-4">
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      step="1"
-                      value={
-                        formData.activity_style === 'relaxing' ? 1 :
-                        formData.activity_style === 'mostly-relaxing' ? 2 :
-                        formData.activity_style === 'balanced' ? 3 :
-                        formData.activity_style === 'mostly-active' ? 4 :
-                        formData.activity_style === 'active' ? 5 : 3
-                      }
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        const activityMap: { [key: number]: 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' } = {
-                          1: 'relaxing',
-                          2: 'mostly-relaxing',
-                          3: 'balanced',
-                          4: 'mostly-active',
-                          5: 'active'
-                        };
-                        setFormData({ ...formData, activity_style: activityMap[value] });
-                      }}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
-                    />
-                    <div className="flex justify-between px-1">
-                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'relaxing' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🧘</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Relaxed</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'mostly-relaxing' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">😌</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Relaxed</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'balanced' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">⚖️</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Balanced</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'mostly-active' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">🚶</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Mostly<br/>Active</span>
-                      </div>
-                      <div className={`flex flex-col items-center transition-all ${formData.activity_style === 'active' ? 'scale-110' : 'opacity-60'}`}>
-                        <span className="text-3xl mb-1">⚡</span>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Active</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Dietary Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">
-                Dietary Restrictions
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'halal', label: 'Halal', icon: '☪️' },
-                  { value: 'vegetarian', label: 'Vegetarian', icon: '🥬' },
-                  { value: 'vegan', label: 'Vegan', icon: '🌱' },
-                  { value: 'gluten-free', label: 'Gluten-Free', icon: '🌾' }
-                ].map((restriction) => {
-                  const restrictions = formData.food_restrictions 
-                    ? formData.food_restrictions.split(',').map(r => r.trim()).filter(Boolean)
-                    : [];
-                  const isSelected = restrictions.includes(restriction.value);
-                  
-                  return (
-                    <div
-                      key={restriction.value}
-                      onClick={() => {
-                        const current = formData.food_restrictions 
-                          ? formData.food_restrictions.split(',').map(r => r.trim()).filter(Boolean)
-                          : [];
-                        const updated = current.includes(restriction.value)
-                          ? current.filter(r => r !== restriction.value)
-                          : [...current, restriction.value];
-                        setFormData({ ...formData, food_restrictions: updated.join(', ') });
-                      }}
-                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="text-center space-y-1">
-                        <div className="text-2xl">{restriction.icon}</div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {restriction.label}
-                        </div>
-                        {isSelected && (
-                          <div className="text-blue-600 text-xl">✓</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button
-                type="submit"
-                disabled={saving}
-                className="flex-1"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-              <button
-                type="button"
-                onClick={() => router.push('/profile')}
-                disabled={saving}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-
-          {/* Category Preferences Section */}
-          {user && (
-            <div className="mt-8">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  Place Preferences
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Help us understand what types of places you enjoy visiting
-                </p>
-              </div>
-              <CategoryPreferences 
-                userId={user.id}
-                onComplete={() => {
-                  // Navigate back to profile after completion
-                  router.push('/profile');
+              <AnchorSeedSelector
+                city={formData.home_city}
+                onCityChange={(city) => {
+                  setFormData({ ...formData, home_city: city });
+                  setSeedRatings({});
                 }}
+                ratings={seedRatings}
+                onRatingChange={(anchorId, rating) => setSeedRatings(prev => ({ ...prev, [anchorId]: rating }))}
               />
             </div>
-          )}
+
+            <div className="flex items-center justify-between bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Anchor places rated</p>
+                <p className="text-xs text-gray-500">{answeredCount} / {anchors.length || 10} answered</p>
+              </div>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving...' : 'Save Profile & Taste Seed'}
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
       <Footer />

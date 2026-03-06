@@ -6,7 +6,7 @@
 'use client';
 
 import Image from 'next/image';
-import type { RecommendedPlace } from '@/core/services/recommendationEngineV2';
+import type { RecommendedPlace } from '@/core/services/recommender';
 
 interface PlaceCardProps {
   place: RecommendedPlace;

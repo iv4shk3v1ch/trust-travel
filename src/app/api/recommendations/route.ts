@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecommendations, getImmediateRecommendations } from '@/core/services/recommender';
+import recommenderApi, { type RecommendationMode } from '@/core/services/recommender';
 import { TravelPlan } from '@/shared/types/travel-plan';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { travelPlan, userId }: { travelPlan: TravelPlan; userId?: string } = body;
+    const {
+      travelPlan,
+      userId,
+      mode = 'cf_only'
+    }: { travelPlan: TravelPlan; userId?: string; mode?: RecommendationMode } = body;
     
     console.log('API: Getting recommendations for travel plan:', travelPlan);
     if (userId) {
       console.log('API: Social bias enabled for user:', userId);
     }
+    console.log('API: Recommendation mode:', mode);
     
     // Validate travel plan
     if (!travelPlan.destination?.area || !travelPlan.travelType || !travelPlan.dates?.type) {
@@ -19,11 +24,23 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!['popular', 'cf_only', 'hybrid'].includes(mode)) {
+      return NextResponse.json(
+        { error: 'Invalid recommendation mode' },
+        { status: 400 }
+      );
+    }
     
-    // Get recommendations based on timing preference (with optional social bias)
+    const getByMode = async () => {
+      if (mode === 'popular') return recommenderApi.recommendPopular(travelPlan, userId);
+      if (mode === 'hybrid') return recommenderApi.recommendHybrid(travelPlan, userId);
+      return recommenderApi.recommendCFOnly(travelPlan, userId);
+    };
+
     const recommendations = travelPlan.dates.type === 'now' 
-      ? await getImmediateRecommendations(travelPlan, userId)
-      : await getRecommendations(travelPlan, userId);
+      ? await recommenderApi.getImmediateRecommendations(travelPlan, userId, mode)
+      : await getByMode();
     
     console.log(`API: Found ${recommendations.length} recommendations`);
     
@@ -31,7 +48,8 @@ export async function POST(request: NextRequest) {
       success: true,
       recommendations,
       count: recommendations.length,
-      socialBiasEnabled: !!userId
+      socialBiasEnabled: !!userId,
+      mode
     });
     
     // Cache for 5 minutes - user-specific but stable for short periods
@@ -65,7 +83,8 @@ export async function GET() {
       dates: { type: 'now | custom', startDate: 'optional', endDate: 'optional' },
       travelType: 'solo | date | family | friends | business',
       experienceTags: ['array', 'of', 'tags'],
-      specialNeeds: ['optional', 'array']
+      specialNeeds: ['optional', 'array'],
+      mode: 'popular | cf_only | hybrid'
     }
   });
 }

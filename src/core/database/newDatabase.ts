@@ -8,6 +8,7 @@ export interface DatabaseProfile {
   age: number | null;
   gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null;
   budget?: 'low' | 'medium' | 'high'; // Changed from budget_level to budget
+  home_city?: 'Trento' | 'Milan' | 'Florence' | 'Rome' | null;
   activities?: string[];
   place_types?: string[];
   food_preferences?: string[];
@@ -17,6 +18,7 @@ export interface DatabaseProfile {
   spending_style?: string | null;
   env_preference?: 'nature' | 'mostly-nature' | 'balanced' | 'mostly-city' | 'city' | null;
   activity_style?: 'relaxing' | 'mostly-relaxing' | 'balanced' | 'mostly-active' | 'active' | null;
+  onboarding_completed_at?: string | null;
   updated_at?: string;
 }
 
@@ -59,6 +61,7 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
     age: profileData.age,
     gender: profileData.gender,
     budget: profileData.budget, // Changed from budget_level
+    home_city: profileData.home_city || null,
     activities: profileData.activities,
     place_types: profileData.place_types,
     food_preferences: profileData.food_preferences,
@@ -67,7 +70,8 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
     trip_style: profileData.trip_style,
     spending_style: profileData.spending_style,
     env_preference: profileData.env_preference,
-    activity_style: profileData.activity_style
+    activity_style: profileData.activity_style,
+    onboarding_completed_at: profileData.onboarding_completed_at || null
   };
 
   console.log('📤 Profile to save:', JSON.stringify(profileToSave, null, 2));
@@ -121,6 +125,7 @@ export async function saveNewProfile(profileData: Omit<DatabaseProfile, 'id' | '
       console.log('  age:', verifyData?.age);
       console.log('  gender:', verifyData?.gender);
       console.log('  budget:', verifyData?.budget);
+      console.log('  home_city:', verifyData?.home_city);
       console.log('  env_preference:', verifyData?.env_preference);
       console.log('  activity_style:', verifyData?.activity_style);
       console.log('  food_restrictions:', verifyData?.food_restrictions);

@@ -7,21 +7,20 @@ import { useAuth as useAuthContext } from '@/features/auth/AuthContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuthContext(); // ✅ Use AuthContext
+  const { user, profile, loading, hasCompletedOnboarding } = useAuthContext();
 
-  // Redirect logic
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Not authenticated -> redirect to login
-        router.push('/login');
-      } else if (profile) {
-        // Already has profile -> redirect to explore
-        router.push('/explore');
-      }
-      // Else: user exists but no profile -> show onboarding
+    if (loading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
     }
-  }, [loading, user, profile, router]);
+
+    if (profile && hasCompletedOnboarding()) {
+      router.push('/explore');
+    }
+  }, [loading, user, profile, hasCompletedOnboarding, router]);
 
   if (loading) {
     return (

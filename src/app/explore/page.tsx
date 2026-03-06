@@ -12,7 +12,7 @@ import { Header } from '@/shared/components/Header';
 import { Footer } from '@/shared/components/Footer';
 import PlaceCard from './PlaceCard';
 import dynamic from 'next/dynamic';
-import type { RecommendedPlace } from '@/core/services/recommendationEngineV2';
+import type { RecommendedPlace, RecommendationMode } from '@/core/services/recommender';
 
 // Lazy load map for better performance
 const ExploreMap = dynamic(() => import('./ExploreMap'), {
@@ -41,6 +41,9 @@ interface SavedItinerary {
 
 export default function ExplorePage() {
   const { user } = useAuth();
+  const [selectedCity, setSelectedCity] = useState<string>('Trento');
+  const [recommendationMode, setRecommendationMode] = useState<RecommendationMode>('cf_only');
+  const [collaborativeCoverage, setCollaborativeCoverage] = useState<'available' | 'missing' | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [bottomSheetHeight, setBottomSheetHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed'); // Mobile bottom sheet
   const [selectedPlace, setSelectedPlace] = useState<RecommendedPlace | null>(null);
@@ -90,7 +93,7 @@ export default function ExplorePage() {
 
         // Fetch recommendations and saved places in parallel
         const [placesResponse, favoritesResponse] = await Promise.all([
-          fetch('/api/explore?section=for-you', {
+          fetch(`/api/explore?section=for-you&city=${encodeURIComponent(selectedCity)}&mode=${encodeURIComponent(recommendationMode)}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
           fetch('/api/favorites', {
@@ -101,13 +104,15 @@ export default function ExplorePage() {
         const placesData = await placesResponse.json();
         const favoritesData = await favoritesResponse.json();
         
-        console.log('🔍 API Response:', {
+        console.log('Explore API Response:', {
           totalPlaces: placesData.places?.length || 0,
           section: placesData.section,
-          count: placesData.count
+          count: placesData.count,
+          diagnostics: placesData.diagnostics
         });
         
         setAllPlaces(placesData.places || []);
+        setCollaborativeCoverage(placesData.diagnostics?.collaborativeCoverage || null);
         setSavedPlaceIds(favoritesData.savedPlaceIds || []);
         setLoading(false);
       } catch (error) {
@@ -117,7 +122,7 @@ export default function ExplorePage() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, selectedCity, recommendationMode]);
 
   // NEW SCHEMA: 5 Main categories for filtering
   const mainCategories = {
@@ -336,7 +341,7 @@ export default function ExplorePage() {
         <Header />
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Sign in to explore Trento
+            Sign in to explore Italian cities
           </h1>
           <p className="text-gray-600 mb-8">
             Get personalized recommendations based on your preferences
@@ -396,7 +401,7 @@ export default function ExplorePage() {
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4">
               <div className="mb-3">
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Explore Trento
+                  Explore {selectedCity}
                 </h1>
                 <p className="text-sm text-gray-600">
                   {loading ? (
@@ -408,6 +413,33 @@ export default function ExplorePage() {
                     </span>
                   )}
                 </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {['Trento', 'Milan', 'Rome', 'Florence'].map((city) => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Mode</label>
+                  <select
+                    value={recommendationMode}
+                    onChange={(e) => setRecommendationMode(e.target.value as RecommendationMode)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="cf_only">CF Only</option>
+                    <option value="hybrid">Hybrid</option>
+                    <option value="popular">Popular</option>
+                  </select>
+                </div>
               </div>
 
               {/* Search Input */}
@@ -637,7 +669,9 @@ export default function ExplorePage() {
                     No places found
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    {searchQuery 
+                    {recommendationMode === 'cf_only' && collaborativeCoverage === 'missing'
+                      ? 'This account does not have enough overlapping review history for pure collaborative filtering yet. Complete the home-city seed onboarding and use Hybrid until you accumulate more real overlapping reviews.'
+                      : searchQuery 
                       ? `No results for "${searchQuery}"`
                       : selectedCategories.length > 0 
                         ? 'Try selecting different categories or clear filters'
@@ -687,6 +721,7 @@ export default function ExplorePage() {
           <div className="w-1/2 lg:w-3/5 sticky top-0 h-full relative">
             <div className="absolute inset-0">
               <ExploreMap
+                city={selectedCity}
                 places={filteredPlaces}
                 selectedPlace={selectedPlace}
                 onPlaceClick={(place) => {
@@ -836,6 +871,7 @@ export default function ExplorePage() {
             {/* Full-screen Map */}
             <div className="absolute inset-0 z-0">
               <ExploreMap
+                city={selectedCity}
                 places={filteredPlaces}
                 selectedPlace={selectedPlace}
                 onPlaceClick={(place) => {
@@ -883,7 +919,7 @@ export default function ExplorePage() {
                   /* Collapsed: Show summary */
                   <div className="px-4 pb-4">
                     <h2 className="text-lg font-bold text-gray-900 mb-1">
-                      Explore Trento
+                      Explore {selectedCity}
                     </h2>
                     <p className="text-sm text-gray-600">
                       {filteredPlaces.length} {filteredPlaces.length === 1 ? 'place' : 'places'} on map
@@ -892,6 +928,33 @@ export default function ExplorePage() {
                 ) : (
                   /* Expanded: Show full list */
                   <div className="px-4 pb-6">
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
+                        <select
+                          value={selectedCity}
+                          onChange={(e) => setSelectedCity(e.target.value)}
+                          className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {['Trento', 'Milan', 'Rome', 'Florence'].map((city) => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Mode</label>
+                        <select
+                          value={recommendationMode}
+                          onChange={(e) => setRecommendationMode(e.target.value as RecommendationMode)}
+                          className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="cf_only">CF Only</option>
+                          <option value="hybrid">Hybrid</option>
+                          <option value="popular">Popular</option>
+                        </select>
+                      </div>
+                    </div>
+
                     {/* Search Bar */}
                     <div className="mb-4">
                       <div className="relative">

@@ -10,9 +10,11 @@ interface DatabaseProfile {
   age: number | null
   gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | null
   budget: 'low' | 'medium' | 'high'
+  home_city?: 'Trento' | 'Milan' | 'Florence' | 'Rome' | null
   env_preference: 'city' | 'nature' | 'balanced' | null
   activity_style: 'active' | 'relaxing' | 'balanced' | null
   food_restrictions: string | null
+  onboarding_completed_at?: string | null
   updated_at: string
   // Optional extended fields
   activities?: string[]
@@ -86,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         age: '',
         gender: '',
         budget: 'medium',
+        home_city: null,
+        onboarding_completed_at: null,
         activities: [],
         place_types: [],
         food_preferences: [],
@@ -113,6 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           age: '',
           gender: '',
           budget: 'medium',
+          home_city: null,
+          onboarding_completed_at: null,
           activities: [],
           place_types: [],
           food_preferences: [],
@@ -349,9 +355,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           age: updates.age ?? null,
           gender: updates.gender || null,
           budget: updates.budget || 'medium',
+          home_city: updates.home_city || null,
           env_preference: updates.env_preference || null,
           activity_style: updates.activity_style || null,
-          food_restrictions: updates.food_restrictions || null
+          food_restrictions: updates.food_restrictions || null,
+          onboarding_completed_at: updates.onboarding_completed_at || null
         }
 
         const result = await supabase
@@ -390,7 +398,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
            profile.full_name && 
            profile.age && 
            profile.gender &&
-           profile.budget)
+           profile.budget &&
+           profile.home_city &&
+           profile.onboarding_completed_at)
   }
 
   const value: AuthContextType = {

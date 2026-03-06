@@ -161,6 +161,12 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <div>
+                  <label className="text-xs font-medium text-gray-500">Home City</label>
+                  <p className="text-sm text-gray-900">
+                    {currentProfile.home_city || 'Not specified'}
+                  </p>
+                </div>
+                <div>
                   <label className="text-xs font-medium text-gray-500">Environment Preference</label>
                   <p className="text-sm text-gray-900">
                     {currentProfile.env_preference === 'nature' ? '🌲 Nature lover' : 
@@ -186,11 +192,21 @@ export default function ProfilePage() {
             {/* Food Restrictions */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:col-span-2">
               <h3 className="text-base font-semibold text-gray-900 mb-3">
-                Dietary Restrictions
+                Cold-Start Taste Seed
               </h3>
-              <p className="text-sm text-gray-900">
-                {currentProfile.food_restrictions || 'No restrictions specified'}
-              </p>
+              <div className="space-y-2 text-sm text-gray-900">
+                <p>
+                  {currentProfile.onboarding_completed_at
+                    ? `Anchor-place onboarding completed on ${new Date(currentProfile.onboarding_completed_at).toLocaleDateString()}`
+                    : 'Anchor-place onboarding has not been completed yet.'}
+                </p>
+                <p className="text-gray-600">
+                  This seed is used by the hybrid recommender to personalize results before you have enough overlapping real reviews for pure collaborative filtering.
+                </p>
+                <p className="text-gray-900">
+                  Dietary restrictions: {currentProfile.food_restrictions || 'No restrictions specified'}
+                </p>
+              </div>
             </div>
 
           </div>

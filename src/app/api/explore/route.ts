@@ -1,13 +1,30 @@
 /**
  * API Route: GET /api/explore
- * Returns personalized recommendations for Explore page sections
- * Uses existing recommendationEngineV2 with different contexts
+ * Returns Explore recommendations using the thesis recommender modes.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/core/database/supabase';
-import { getIntentBasedRecommendations, type RecommendationContext } from '@/core/services/recommendationEngineV2';
-import type { PlaceCategory } from '@/shared/utils/dataStandards';
+import recommenderApi, { type RecommendationMode } from '@/core/services/recommender';
+import type { TravelPlan } from '@/shared/types/travel-plan';
+
+const SUPPORTED_CITIES = ['Trento', 'Milan', 'Rome', 'Florence'] as const;
+const DEFAULT_CITY = 'Trento';
+const DEFAULT_MODE: RecommendationMode = 'cf_only';
+
+function normalizeCity(input: string | null): string {
+  if (!input) return DEFAULT_CITY;
+  const normalized = input.trim().toLowerCase();
+  const match = SUPPORTED_CITIES.find(city => city.toLowerCase() === normalized);
+  return match || DEFAULT_CITY;
+}
+
+function normalizeMode(input: string | null): RecommendationMode {
+  if (input === 'popular' || input === 'hybrid' || input === 'cf_only') {
+    return input;
+  }
+  return DEFAULT_MODE;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,121 +42,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('users')
-      .select('env_preference, activity_style, food_restrictions')
-      .eq('id', user.id)
-      .single();
-
-    // Get section from query params
     const { searchParams } = new URL(request.url);
+    const city = normalizeCity(searchParams.get('city'));
+    const mode = normalizeMode(searchParams.get('mode'));
     const section = searchParams.get('section') || 'for-you';
 
-    let context: RecommendationContext;
+    const travelPlan: TravelPlan = {
+      destination: {
+        area: city,
+        region: city
+      },
+      dates: {
+        type: 'custom',
+        isFlexible: false
+      },
+      travelType: 'solo',
+      experienceTags: [],
+      specialNeeds: [],
+      completedSteps: [],
+      isComplete: true,
+      categories: []
+    };
 
-    // Build context based on section
-    switch (section) {
-      case 'for-you':
-        // General personalized recommendations - show ALL categories and budgets
-        context = {
-          intent: 'discovery',
-          userId: user.id,
-          location: 'Trento',
-          userProfile: profile || undefined,
-          disableBehavioralCategoryFilter: true, // Show all categories
-          disableBehavioralBudgetFilter: true, // Show all price levels
-        };
-        break;
+    console.log(`📍 Fetching explore recommendations for user ${user.id} in ${city} with mode ${mode}`);
 
-      case 'hidden-gems':
-        // Filter for high novelty, low popularity
-        context = {
-          intent: 'discovery',
-          userId: user.id,
-          location: 'Trento',
-          userProfile: profile || undefined,
-          // We'll filter by novelty_score in post-processing
-        };
-        break;
+    let places = mode === 'popular'
+      ? await recommenderApi.recommendPopular(travelPlan, user.id)
+      : mode === 'hybrid'
+        ? await recommenderApi.recommendHybrid(travelPlan, user.id)
+        : await recommenderApi.recommendCFOnly(travelPlan, user.id);
 
-      case 'nature':
-        // Nature & outdoor spots
-        context = {
-          intent: 'discovery',
-          userId: user.id,
-          location: 'Trento',
-          categories: [
-            'park',
-            'viewpoint',
-            'botanical-garden',
-            'hiking-trail'
-          ] as PlaceCategory[],
-          environment: 'outdoor',
-          userProfile: profile || undefined,
-        };
-        break;
-
-      case 'food':
-        // Food & dining
-        context = {
-          intent: 'goal-oriented',
-          userId: user.id,
-          location: 'Trento',
-          categories: [
-            'restaurant',
-            'pizzeria',
-            'local-trattoria',
-            'cafe',
-            'bakery',
-            'gelato',
-            'aperetivo-bar'
-          ] as PlaceCategory[],
-          userProfile: profile || undefined,
-        };
-        break;
-
-      case 'culture':
-        // Culture & history
-        context = {
-          intent: 'discovery',
-          userId: user.id,
-          location: 'Trento',
-          categories: [
-            'museum',
-            'historical-landmark',
-            'church',
-            'art-gallery',
-            'theater'
-          ] as PlaceCategory[],
-          environment: 'indoor',
-          userProfile: profile || undefined,
-        };
-        break;
-
-      default:
-        return NextResponse.json({ error: 'Invalid section' }, { status: 400 });
-    }
-
-    // Get recommendations using existing engine
-    // Request 100 places (entire dataset) - the engine will rank all and cache results
-    console.log(`📍 Fetching ${section} recommendations for user ${user.id}`);
-    let places = await getIntentBasedRecommendations(context, 100);
-
-    // Post-process for specific sections
-    if (section === 'hidden-gems') {
-      // Filter for hidden gems: high novelty, low-to-medium popularity
-      places = places.filter(p => 
-        (p.novelty_score || 0) > 0.5 && 
-        (p.popularity_score || 0) < 0.5
-      );
-      console.log(`💎 Filtered to ${places.length} hidden gems`);
-    }
-
-    console.log(`✅ Returning ${places.length} places for ${section}`);
+    console.log(`✅ Returning ${places.length} places for ${city}/${mode}`);
     
     return NextResponse.json({
       section,
+      city,
+      mode,
+      diagnostics: {
+        collaborativeCoverage: mode === 'cf_only' ? (places.length > 0 ? 'available' : 'missing') : undefined
+      },
       places,
       count: places.length
     });
