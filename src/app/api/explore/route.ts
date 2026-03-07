@@ -11,6 +11,9 @@ import type { TravelPlan } from '@/shared/types/travel-plan';
 const SUPPORTED_CITIES = ['Trento', 'Milan', 'Rome', 'Florence'] as const;
 const DEFAULT_CITY = 'Trento';
 const DEFAULT_MODE: RecommendationMode = 'cf_only';
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 50;
 
 function normalizeCity(input: string | null): string {
   if (!input) return DEFAULT_CITY;
@@ -26,18 +29,30 @@ function normalizeMode(input: string | null): RecommendationMode {
   return DEFAULT_MODE;
 }
 
+function normalizePositiveInt(
+  input: string | null,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  if (!input) return fallback;
+  const parsed = Number.parseInt(input, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 export async function GET(request: NextRequest) {
   try {
-    // Get current user from Supabase auth
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    
+    const {
+      data: { user },
+      error: authError
+    } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -46,6 +61,8 @@ export async function GET(request: NextRequest) {
     const city = normalizeCity(searchParams.get('city'));
     const mode = normalizeMode(searchParams.get('mode'));
     const section = searchParams.get('section') || 'for-you';
+    const page = normalizePositiveInt(searchParams.get('page'), DEFAULT_PAGE, 1, 500);
+    const pageSize = normalizePositiveInt(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
 
     const travelPlan: TravelPlan = {
       destination: {
@@ -64,29 +81,33 @@ export async function GET(request: NextRequest) {
       categories: []
     };
 
-    console.log(`📍 Fetching explore recommendations for user ${user.id} in ${city} with mode ${mode}`);
-
-    let places = mode === 'popular'
-      ? await recommenderApi.recommendPopular(travelPlan, user.id)
+    const requestedLimit = (page * pageSize) + 1;
+    const recommendations = mode === 'popular'
+      ? await recommenderApi.recommendPopular(travelPlan, user.id, requestedLimit)
       : mode === 'hybrid'
-        ? await recommenderApi.recommendHybrid(travelPlan, user.id)
-        : await recommenderApi.recommendCFOnly(travelPlan, user.id);
+        ? await recommenderApi.recommendHybrid(travelPlan, user.id, requestedLimit)
+        : await recommenderApi.recommendCFOnly(travelPlan, user.id, requestedLimit);
 
-    console.log(`✅ Returning ${places.length} places for ${city}/${mode}`);
-    
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const places = recommendations.slice(startIndex, endIndex);
+    const hasMore = recommendations.length > endIndex;
+
     return NextResponse.json({
       section,
       city,
       mode,
+      page,
+      pageSize,
+      hasMore,
       diagnostics: {
         collaborativeCoverage: mode === 'cf_only' ? (places.length > 0 ? 'available' : 'missing') : undefined
       },
       places,
       count: places.length
     });
-
   } catch (error) {
-    console.error('❌ Error in explore API:', error);
+    console.error('Error in explore API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

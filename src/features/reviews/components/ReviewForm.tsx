@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import type { ReviewFormData, ExperienceTag } from '@/shared/types/review';
 import type { PlaceWithType } from '@/shared/types/place';
 import { PRICE_RANGES } from '@/shared/types/review';
 import { getExperienceTags } from '@/core/database/reviewsDatabase';
-import { getAllPlaces } from '@/core/database/placesDatabase';
+import { getPlaceById, searchPlaces } from '@/core/database/placesDatabase';
 import { 
   TAG_GROUP_LABELS,
   TAG_GROUPS,
@@ -23,12 +23,22 @@ interface ReviewFormProps {
   initialData?: Partial<ReviewFormData>;
 }
 
+const MIN_SEARCH_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_LIMIT = 50;
+
 export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps) {
-  const [places, setPlaces] = useState<PlaceWithType[]>([]);
+  const [searchResults, setSearchResults] = useState<PlaceWithType[]>([]);
   const [experienceTags, setExperienceTags] = useState<ExperienceTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const [prefilledPlaceMissing, setPrefilledPlaceMissing] = useState(false);
+  const searchRequestVersion = useRef(0);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   
   const [formData, setFormData] = useState<ReviewFormData>({
     place_id: initialData?.place_id || '',
@@ -84,19 +94,21 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch places
-      const placesData = await getAllPlaces();
-      setPlaces(placesData);
 
       // Fetch experience tags
       const tags = await getExperienceTags();
       setExperienceTags(tags);
 
-      // If place_id is pre-selected, find the place
-      if (initialData?.place_id && placesData) {
-        const place = placesData.find((p: PlaceWithType) => p.id === initialData.place_id);
-        if (place) setSelectedPlace(place);
+      // If place_id is pre-selected, load the place directly.
+      if (initialData?.place_id) {
+        const place = await getPlaceById(initialData.place_id);
+        if (place) {
+          setSelectedPlace(place);
+          setSearchTerm(place.name);
+        } else {
+          setPrefilledPlaceMissing(true);
+          setFormData(prev => ({ ...prev, place_id: '' }));
+        }
       }
 
     } catch (error) {
@@ -107,20 +119,67 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
     }
   };
 
-  const handlePlaceChange = (placeId: string) => {
-    const place = places.find((p: PlaceWithType) => p.id === placeId);
-    setSelectedPlace(place || null);
-    setFormData({ ...formData, place_id: placeId });
-    setSearchTerm('');
+  useEffect(() => {
+    if (!isUserTyping) {
+      return;
+    }
+
+    const normalizedQuery = searchTerm.trim();
+    if (normalizedQuery.length < MIN_SEARCH_LENGTH) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+
+    const requestVersion = ++searchRequestVersion.current;
+    setSearchLoading(true);
+    setSearchError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchPlaces(normalizedQuery, undefined, SEARCH_LIMIT);
+        if (requestVersion !== searchRequestVersion.current) {
+          return;
+        }
+        setSearchResults(results);
+      } catch (error) {
+        if (requestVersion !== searchRequestVersion.current) {
+          return;
+        }
+        console.error('Error searching places:', error);
+        setSearchError('Failed to search places. Please try again.');
+      } finally {
+        if (requestVersion === searchRequestVersion.current) {
+          setSearchLoading(false);
+        }
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [isUserTyping, searchTerm]);
+
+  const handlePlaceChange = (place: PlaceWithType) => {
+    setSelectedPlace(place);
+    setFormData(prev => ({ ...prev, place_id: place.id }));
+    setSearchTerm(place.name);
+    setIsUserTyping(false);
+    setSearchError(null);
+    setSearchResults([]);
+    setPrefilledPlaceMissing(false);
     setShowPlaceDropdown(false);
   };
 
-  // Filter places based on search
-  const filteredPlaces = places.filter(place =>
-    place.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    place.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    place.place_type?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const clearSelectedPlace = (keepQuery: boolean) => {
+    const currentName = selectedPlace?.name || '';
+    setSelectedPlace(null);
+    setFormData(prev => ({ ...prev, place_id: '' }));
+    setSearchTerm(keepQuery ? currentName : '');
+    setIsUserTyping(true);
+    setShowPlaceDropdown(true);
+    setPrefilledPlaceMissing(false);
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  };
 
   const handleTagToggle = (tagId: string) => {
     const currentTags = formData.experience_tag_ids;
@@ -200,14 +259,22 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
             {/* Searchable dropdown */}
             <div className="relative">
               <input
+                ref={searchInputRef}
                 type="text"
-                value={selectedPlace ? `${selectedPlace.name} (${selectedPlace.place_type?.name || 'Unknown'})` : searchTerm}
+                value={searchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  const value = e.target.value;
+                  setSearchTerm(value);
                   setShowPlaceDropdown(true);
-                  if (!e.target.value) {
-                    setFormData({ ...formData, place_id: '' });
+                  setIsUserTyping(true);
+                  setSearchError(null);
+
+                  if (selectedPlace) {
                     setSelectedPlace(null);
+                    setFormData(prev => ({ ...prev, place_id: '' }));
+                  }
+                  if (!value.trim()) {
+                    setSearchResults([]);
                   }
                 }}
                 onFocus={() => setShowPlaceDropdown(true)}
@@ -215,47 +282,100 @@ export function ReviewForm({ onSubmit, onCancel, initialData }: ReviewFormProps)
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                 required
               />
-              
+
               {/* Dropdown list */}
-              {showPlaceDropdown && filteredPlaces.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white bg-white border border-gray-300 border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredPlaces.map(place => (
+              {showPlaceDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                  {isUserTyping && searchTerm.trim().length < MIN_SEARCH_LENGTH && (
+                    <div className="px-4 py-3 text-sm text-gray-600">
+                      Type at least {MIN_SEARCH_LENGTH} characters to search.
+                    </div>
+                  )}
+
+                  {searchLoading && (
+                    <div className="px-4 py-3 text-sm text-gray-600">
+                      Searching places...
+                    </div>
+                  )}
+
+                  {!searchLoading && searchError && (
+                    <div className="px-4 py-3 text-sm text-red-600">
+                      {searchError}
+                    </div>
+                  )}
+
+                  {!searchLoading && !searchError && searchResults.length > 0 && searchResults.map(place => (
                     <button
                       key={place.id}
                       type="button"
-                      onClick={() => handlePlaceChange(place.id)}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 hover:bg-gray-100 text-gray-900 text-gray-900 ${
-                        formData.place_id === place.id ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                      onClick={() => handlePlaceChange(place)}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-900 ${
+                        formData.place_id === place.id ? 'bg-blue-50' : ''
                       }`}
                     >
                       <div className="font-medium">{place.name}</div>
-                      <div className="text-xs text-gray-500 text-gray-600">
-                        {place.place_type?.icon} {place.place_type?.name} • {place.city || 'Unknown city'}
+                      <div className="text-xs text-gray-600">
+                        {place.place_type?.icon} {place.place_type?.name || 'Unknown type'} - {place.city || 'Unknown city'}
                       </div>
+                      {place.address && (
+                        <div className="text-xs text-gray-500 truncate">
+                          {place.address}
+                        </div>
+                      )}
                     </button>
                   ))}
+
+                  {!searchLoading && !searchError && isUserTyping && searchTerm.trim().length >= MIN_SEARCH_LENGTH && searchResults.length === 0 && (
+                    <div className="px-4 py-3 text-sm text-yellow-700">
+                      <div>No places found for this query.</div>
+                      <a
+                        href={`/add-place?returnTo=${encodeURIComponent('/reviews')}&prefillName=${encodeURIComponent(searchTerm.trim())}`}
+                        className="inline-flex mt-2 text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Add this place
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
-              
+
               {/* Click outside to close */}
               {showPlaceDropdown && (
-                <div 
-                  className="fixed inset-0 z-40" 
+                <div
+                  className="fixed inset-0 z-40"
                   onClick={() => setShowPlaceDropdown(false)}
                 />
               )}
             </div>
-            
+
             {selectedPlace && (
-              <p className="mt-1 text-xs text-gray-500">
-                Selected: {selectedPlace.name} in {selectedPlace.city}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-3 py-1">
+                  Selected: {selectedPlace.name} ({selectedPlace.city || 'Unknown city'})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => clearSelectedPlace(true)}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  onClick={() => clearSelectedPlace(false)}
+                  className="text-gray-600 hover:text-gray-700 font-medium"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {prefilledPlaceMissing && (
+              <p className="mt-1 text-xs text-yellow-700">
+                The pre-selected place was not found. Please search and select a place.
               </p>
             )}
-            {!selectedPlace && searchTerm && filteredPlaces.length === 0 && (
-              <p className="mt-1 text-xs text-yellow-600">
-                No places found. Try different keywords.
-              </p>
-            )}
+
           </div>
 
           <div>

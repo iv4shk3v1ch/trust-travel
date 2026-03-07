@@ -10,9 +10,10 @@ import { getPlaceTypes, saveNewPlace } from '@/core/database/placesDatabase';
 interface AddPlaceFormProps {
   onSuccess?: (placeId: string) => void;
   onCancel?: () => void;
+  initialName?: string;
 }
 
-export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
+export function AddPlaceForm({ onSuccess, onCancel, initialName }: AddPlaceFormProps) {
   const [placeTypes, setPlaceTypes] = useState<PlaceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +22,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [formData, setFormData] = useState<PlaceFormData>({
-    name: '',
+    name: initialName?.trim() || '',
     place_type_id: '',
     city: '',
     country: 'Italy',
@@ -135,7 +136,7 @@ export function AddPlaceForm({ onSuccess, onCancel }: AddPlaceFormProps) {
         alert('Place added successfully! 🎉');
         // Reset form
         setFormData({
-          name: '',
+          name: initialName?.trim() || '',
           place_type_id: '',
           city: '',
           country: 'Italy',

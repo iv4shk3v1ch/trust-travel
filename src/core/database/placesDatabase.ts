@@ -207,22 +207,34 @@ export async function updatePlace(
 }
 
 // Search for places by name and city
-export async function searchPlaces(query: string, city?: string): Promise<PlaceWithType[]> {
+export async function searchPlaces(query: string, city?: string, limit: number = 50): Promise<PlaceWithType[]> {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) {
+    return [];
+  }
+
+  // PostgREST `or` uses commas as separators, so we strip commas from user input.
+  const safeQuery = normalizedQuery.replace(/,/g, ' ');
+
   let queryBuilder = supabase
     .from('places')
     .select(`
       *,
       place_type:place_types (*)
     `)
-    .ilike('name', `%${query}%`);
+    .or(
+      `name.ilike.%${safeQuery}%,city.ilike.%${safeQuery}%,address.ilike.%${safeQuery}%`
+    );
 
-  if (city) {
-    queryBuilder = queryBuilder.ilike('city', `%${city}%`);
+  const normalizedCity = city?.trim();
+  if (normalizedCity) {
+    queryBuilder = queryBuilder.ilike('city', `%${normalizedCity}%`);
   }
 
   const { data, error } = await queryBuilder
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .order('name', { ascending: true })
+    .order('city', { ascending: true })
+    .limit(limit);
 
   if (error) {
     console.error('Error searching places:', error);

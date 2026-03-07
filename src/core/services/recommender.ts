@@ -1322,7 +1322,11 @@ function buildCFCandidates(
   return candidates;
 }
 
-export async function recommendPopular(travelPlan: TravelPlan, currentUserId?: string): Promise<RecommendedPlace[]> {
+export async function recommendPopular(
+  travelPlan: TravelPlan,
+  currentUserId?: string,
+  limit: number = 20
+): Promise<RecommendedPlace[]> {
   try {
     const prepared = await prepareRecommendationData(travelPlan, currentUserId);
     if (!prepared) {
@@ -1333,7 +1337,7 @@ export async function recommendPopular(travelPlan: TravelPlan, currentUserId?: s
       prepared.targetCityReviews,
       prepared.requestedCategories,
       prepared.requestedTags,
-      20
+      limit
     );
   } catch (error) {
     console.error('Error in popular recommendations:', error);
@@ -1341,7 +1345,11 @@ export async function recommendPopular(travelPlan: TravelPlan, currentUserId?: s
   }
 }
 
-export async function recommendCFOnly(travelPlan: TravelPlan, currentUserId?: string): Promise<RecommendedPlace[]> {
+export async function recommendCFOnly(
+  travelPlan: TravelPlan,
+  currentUserId?: string,
+  limit: number = 20
+): Promise<RecommendedPlace[]> {
   try {
     const prepared = await prepareRecommendationData(travelPlan, currentUserId);
     if (!prepared) {
@@ -1358,7 +1366,7 @@ export async function recommendCFOnly(travelPlan: TravelPlan, currentUserId?: st
       return [];
     }
 
-    return diversifyRecommendations(candidates, 20, 'cf_only').map(candidate =>
+    return diversifyRecommendations(candidates, limit, 'cf_only').map(candidate =>
       buildRecommendation(candidate, prepared.requestedTags)
     );
   } catch (error) {
@@ -1367,7 +1375,11 @@ export async function recommendCFOnly(travelPlan: TravelPlan, currentUserId?: st
   }
 }
 
-export async function recommendHybrid(travelPlan: TravelPlan, currentUserId?: string): Promise<RecommendedPlace[]> {
+export async function recommendHybrid(
+  travelPlan: TravelPlan,
+  currentUserId?: string,
+  limit: number = 20
+): Promise<RecommendedPlace[]> {
   try {
     const prepared = await prepareRecommendationData(travelPlan, currentUserId);
     if (!prepared) {
@@ -1380,7 +1392,7 @@ export async function recommendHybrid(travelPlan: TravelPlan, currentUserId?: st
         prepared.targetCityReviews,
         prepared.requestedCategories,
         prepared.requestedTags,
-        20,
+        limit,
         {
           categoryAffinities: prepared.categoryAffinities,
           mainCategoryAffinities: prepared.mainCategoryAffinities,
@@ -1407,7 +1419,7 @@ export async function recommendHybrid(travelPlan: TravelPlan, currentUserId?: st
         prepared.targetCityReviews,
         prepared.requestedCategories,
         prepared.requestedTags,
-        20,
+        limit,
         {
           categoryAffinities: prepared.categoryAffinities,
           mainCategoryAffinities: prepared.mainCategoryAffinities,
@@ -1416,7 +1428,7 @@ export async function recommendHybrid(travelPlan: TravelPlan, currentUserId?: st
       );
     }
 
-    return diversifyRecommendations(candidates, 20, 'hybrid').map(candidate =>
+    return diversifyRecommendations(candidates, limit, 'hybrid').map(candidate =>
       buildRecommendation(candidate, prepared.requestedTags)
     );
   } catch (error) {

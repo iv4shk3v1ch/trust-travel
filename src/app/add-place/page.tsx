@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AddPlaceForm } from '@/features/places/components/AddPlaceForm';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
@@ -9,8 +9,15 @@ import { Footer } from '@/shared/components/Footer';
 
 export default function AddPlacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [addedPlaceId, setAddedPlaceId] = useState<string | null>(null);
+
+  const rawReturnTo = searchParams.get('returnTo');
+  const returnTo = rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//')
+    ? rawReturnTo
+    : null;
+  const prefillName = (searchParams.get('prefillName') || '').trim();
 
   const handleSuccess = (placeId: string) => {
     setAddedPlaceId(placeId);
@@ -23,7 +30,7 @@ export default function AddPlacePage() {
   };
 
   const handleCancel = () => {
-    router.push('/explore');
+    router.push(returnTo || '/explore');
   };
 
   if (showSuccessMessage && addedPlaceId) {
@@ -65,14 +72,26 @@ export default function AddPlacePage() {
                 >
                   Back to Explore
                 </Button>
-                
-                <Button
-                  onClick={() => router.push('/reviews')}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Leave a Review
-                </Button>
+
+                {returnTo && (
+                  <Button
+                    onClick={() => router.push(returnTo)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {returnTo === '/reviews' ? 'Back to Reviews' : 'Back'}
+                  </Button>
+                )}
+
+                {!returnTo && (
+                  <Button
+                    onClick={() => router.push('/reviews')}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Leave a Review
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -101,6 +120,7 @@ export default function AddPlacePage() {
           <AddPlaceForm 
             onSuccess={handleSuccess}
             onCancel={handleCancel}
+            initialName={prefillName}
           />
           
           {/* Info Card */}

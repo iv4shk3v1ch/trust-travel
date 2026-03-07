@@ -20,6 +20,8 @@ const ExploreMap = dynamic(() => import('./ExploreMap'), {
   loading: () => <div className="bg-gray-100 animate-pulse h-full rounded-lg"></div>
 });
 
+const PAGE_SIZE = 20;
+
 interface ItineraryPlace {
   id: string;
   name: string;
@@ -39,6 +41,27 @@ interface SavedItinerary {
   days: Array<{ id: string; date: string; places: ItineraryPlace[] }>;
 }
 
+type ExploreApiResponse = {
+  places?: RecommendedPlace[];
+  page?: number;
+  hasMore?: boolean;
+  diagnostics?: {
+    collaborativeCoverage?: 'available' | 'missing';
+  };
+};
+
+function mergeUniquePlaces(existing: RecommendedPlace[], incoming: RecommendedPlace[]): RecommendedPlace[] {
+  if (!incoming.length) return existing;
+  const byId = new Map<string, RecommendedPlace>();
+  for (const place of existing) {
+    byId.set(place.id, place);
+  }
+  for (const place of incoming) {
+    byId.set(place.id, place);
+  }
+  return Array.from(byId.values());
+}
+
 export default function ExplorePage() {
   const { user } = useAuth();
   const [selectedCity, setSelectedCity] = useState<string>('Trento');
@@ -52,6 +75,9 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState<string>(''); // Search query
   const [allPlaces, setAllPlaces] = useState<RecommendedPlace[]>([]); // All fetched places
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Advanced filters (UPDATED TO NEW SCHEMA)
   const [priceFilter, setPriceFilter] = useState<string[]>([]); // 'budget', 'moderate', 'expensive', 'luxury'
@@ -72,6 +98,7 @@ export default function ExplorePage() {
 
   // Refs for scrolling to place cards
   const placeCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const fetchRequestVersionRef = useRef(0);
 
   // Detect mobile
   useEffect(() => {
@@ -81,47 +108,84 @@ export default function ExplorePage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const fetchExplorePage = async (page: number, append: boolean) => {
+    if (!user) return;
+
+    const requestVersion = ++fetchRequestVersionRef.current;
+    try {
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+
+      const placesResponse = await fetch(
+        `/api/explore?section=for-you&city=${encodeURIComponent(selectedCity)}&mode=${encodeURIComponent(recommendationMode)}&page=${page}&pageSize=${PAGE_SIZE}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!placesResponse.ok) {
+        throw new Error(`Explore API request failed: ${placesResponse.status}`);
+      }
+
+      const placesData = (await placesResponse.json()) as ExploreApiResponse;
+      if (requestVersion !== fetchRequestVersionRef.current) {
+        return;
+      }
+
+      const nextPlaces = placesData.places || [];
+      setAllPlaces(prev => (append ? mergeUniquePlaces(prev, nextPlaces) : nextPlaces));
+      setHasMore(Boolean(placesData.hasMore));
+      setCurrentPage(placesData.page || page);
+      setCollaborativeCoverage(placesData.diagnostics?.collaborativeCoverage || null);
+    } catch (error) {
+      console.error('Error fetching explore places:', error);
+    } finally {
+      if (requestVersion !== fetchRequestVersionRef.current) {
+        return;
+      }
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const fetchSavedPlaces = async () => {
+    if (!user) return;
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+
+      const favoritesResponse = await fetch('/api/favorites', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!favoritesResponse.ok) {
+        throw new Error(`Favorites API request failed: ${favoritesResponse.status}`);
+      }
+
+      const favoritesData = await favoritesResponse.json();
+      setSavedPlaceIds(favoritesData.savedPlaceIds || []);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || loading || !hasMore) return;
+    await fetchExplorePage(currentPage + 1, true);
+  };
+
   // Fetch all recommendations and saved places
   useEffect(() => {
     if (!user) return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const token = (await supabase.auth.getSession()).data.session?.access_token;
-        if (!token) return;
-
-        // Fetch recommendations and saved places in parallel
-        const [placesResponse, favoritesResponse] = await Promise.all([
-          fetch(`/api/explore?section=for-you&city=${encodeURIComponent(selectedCity)}&mode=${encodeURIComponent(recommendationMode)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('/api/favorites', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        ]);
-
-        const placesData = await placesResponse.json();
-        const favoritesData = await favoritesResponse.json();
-        
-        console.log('Explore API Response:', {
-          totalPlaces: placesData.places?.length || 0,
-          section: placesData.section,
-          count: placesData.count,
-          diagnostics: placesData.diagnostics
-        });
-        
-        setAllPlaces(placesData.places || []);
-        setCollaborativeCoverage(placesData.diagnostics?.collaborativeCoverage || null);
-        setSavedPlaceIds(favoritesData.savedPlaceIds || []);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    setAllPlaces([]);
+    setHasMore(false);
+    setCurrentPage(1);
+    setCollaborativeCoverage(null);
+    fetchExplorePage(1, false);
+    fetchSavedPlaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedCity, recommendationMode]);
 
   // NEW SCHEMA: 5 Main categories for filtering
@@ -186,6 +250,12 @@ export default function ExplorePage() {
 
     return matchesSearch && matchesCategory && matchesPrice && matchesEnvironment && matchesDistance;
   });
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+    selectedCategories.length > 0 ||
+    priceFilter.length > 0 ||
+    environmentFilter
+  );
 
   // Debug logging
   console.log('🎯 Filter State:', {
@@ -408,8 +478,8 @@ export default function ExplorePage() {
                     <span className="animate-pulse">Loading places...</span>
                   ) : (
                     <span>
-                      {filteredPlaces.length} {filteredPlaces.length === 1 ? 'place' : 'places'}
-                      {(searchQuery || selectedCategories.length > 0) && ' matching your filters'}
+                      {filteredPlaces.length}{hasMore ? '+' : ''} {filteredPlaces.length === 1 ? 'place' : 'places'}
+                      {hasActiveFilters && ' matching your filters'}
                     </span>
                   )}
                 </p>
@@ -688,31 +758,56 @@ export default function ExplorePage() {
                       Clear all filters
                     </button>
                   )}
+                  {hasMore && (
+                    <div className="mt-4">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isLoadingMore ? 'Loading more...' : `Load more places (${PAGE_SIZE})`}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
-                // Place cards
-                filteredPlaces.map(place => (
-                  <div
-                    key={place.id}
-                    ref={(el) => {
-                      if (el) placeCardRefs.current.set(place.id, el);
-                      else placeCardRefs.current.delete(place.id);
-                    }}
-                  >
-                    <PlaceCard
-                      place={place}
-                      isSaved={savedPlaceIds.includes(place.id)}
-                      onLike={() => handleLike(place.id)}
-                      onViewDetails={() => handleViewDetails(place)}
-                      onWriteReview={() => handleWriteReview(place)}
-                      onAddToItinerary={() => handleAddToItinerary(place)}
-                      onClick={() => {
-                        // Center map on this place
-                        setSelectedPlace(place);
+                <>
+                  {/* Place cards */}
+                  {filteredPlaces.map(place => (
+                    <div
+                      key={place.id}
+                      ref={(el) => {
+                        if (el) placeCardRefs.current.set(place.id, el);
+                        else placeCardRefs.current.delete(place.id);
                       }}
-                    />
-                  </div>
-                ))
+                    >
+                      <PlaceCard
+                        place={place}
+                        isSaved={savedPlaceIds.includes(place.id)}
+                        onLike={() => handleLike(place.id)}
+                        onViewDetails={() => handleViewDetails(place)}
+                        onWriteReview={() => handleWriteReview(place)}
+                        onAddToItinerary={() => handleAddToItinerary(place)}
+                        onClick={() => {
+                          // Center map on this place
+                          setSelectedPlace(place);
+                        }}
+                      />
+                    </div>
+                  ))}
+
+                  {hasMore && (
+                    <div className="pt-2 text-center">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isLoadingMore ? 'Loading more...' : `Load ${PAGE_SIZE} more`}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -922,7 +1017,7 @@ export default function ExplorePage() {
                       Explore {selectedCity}
                     </h2>
                     <p className="text-sm text-gray-600">
-                      {filteredPlaces.length} {filteredPlaces.length === 1 ? 'place' : 'places'} on map
+                      {filteredPlaces.length}{hasMore ? '+' : ''} {filteredPlaces.length === 1 ? 'place' : 'places'} on map
                     </p>
                   </div>
                 ) : (
@@ -1019,30 +1114,53 @@ export default function ExplorePage() {
                         <div className="text-center py-12">
                           <p className="text-gray-500 text-lg mb-2">No places found</p>
                           <p className="text-gray-400 text-sm">Try adjusting your filters</p>
+                          {hasMore && (
+                            <button
+                              onClick={handleLoadMore}
+                              disabled={isLoadingMore}
+                              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {isLoadingMore ? 'Loading more...' : `Load more places (${PAGE_SIZE})`}
+                            </button>
+                          )}
                         </div>
                       ) : (
-                        filteredPlaces.map(place => (
-                          <div
-                            key={place.id}
-                            ref={(el) => {
-                              if (el) placeCardRefs.current.set(place.id, el);
-                              else placeCardRefs.current.delete(place.id);
-                            }}
-                          >
-                            <PlaceCard
-                              place={place}
-                              isSaved={savedPlaceIds.includes(place.id)}
-                              onLike={() => handleLike(place.id)}
-                              onViewDetails={() => handleViewDetails(place)}
-                              onWriteReview={() => handleWriteReview(place)}
-                              onAddToItinerary={() => handleAddToItinerary(place)}
-                              onClick={() => {
-                                setSelectedPlace(place);
-                                setBottomSheetHeight('collapsed'); // Collapse to show map
+                        <>
+                          {filteredPlaces.map(place => (
+                            <div
+                              key={place.id}
+                              ref={(el) => {
+                                if (el) placeCardRefs.current.set(place.id, el);
+                                else placeCardRefs.current.delete(place.id);
                               }}
-                            />
-                          </div>
-                        ))
+                            >
+                              <PlaceCard
+                                place={place}
+                                isSaved={savedPlaceIds.includes(place.id)}
+                                onLike={() => handleLike(place.id)}
+                                onViewDetails={() => handleViewDetails(place)}
+                                onWriteReview={() => handleWriteReview(place)}
+                                onAddToItinerary={() => handleAddToItinerary(place)}
+                                onClick={() => {
+                                  setSelectedPlace(place);
+                                  setBottomSheetHeight('collapsed'); // Collapse to show map
+                                }}
+                              />
+                            </div>
+                          ))}
+
+                          {hasMore && (
+                            <div className="pt-1 pb-2 text-center">
+                              <button
+                                onClick={handleLoadMore}
+                                disabled={isLoadingMore}
+                                className="w-full py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {isLoadingMore ? 'Loading more...' : `Load ${PAGE_SIZE} more`}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
