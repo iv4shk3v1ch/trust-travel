@@ -6,13 +6,14 @@
  * Optimized for fast bulk review
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/core/database/supabase';
 import dynamic from 'next/dynamic';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
 interface Place {
@@ -39,9 +40,49 @@ interface PlaceType {
   slug: string;
 }
 
+const DEFAULT_MAP_CENTER: [number, number] = [42.8, 12.6];
+const CITY_CENTERS: Record<string, [number, number]> = {
+  Trento: [46.0664, 11.1257],
+  Milan: [45.4642, 9.19],
+  Rome: [41.9028, 12.4964],
+  Florence: [43.7696, 11.2558],
+  Prague: [50.0755, 14.4378],
+};
+
+function toRad(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function isSuspiciousCoordinate(place: Place): boolean {
+  if (place.latitude == null || place.longitude == null) return false;
+
+  // Rough Italy bounding box
+  if (place.latitude < 35 || place.latitude > 48 || place.longitude < 6 || place.longitude > 19) {
+    return true;
+  }
+
+  const center = place.city ? CITY_CENTERS[place.city] : null;
+  if (!center) return false;
+
+  return haversineKm(place.latitude, place.longitude, center[0], center[1]) > 120;
+}
+
 export default function PlaceManagementPage() {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [mapPlaces, setMapPlaces] = useState<Place[]>([]);
   const [placeTypes, setPlaceTypes] = useState<PlaceType[]>([]);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Place>>({});
@@ -51,6 +92,7 @@ export default function PlaceManagementPage() {
   const [filterType, setFilterType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showWithoutCoords, setShowWithoutCoords] = useState(false);
+  const [showOnlySuspiciousCoords, setShowOnlySuspiciousCoords] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(0);
@@ -62,20 +104,48 @@ export default function PlaceManagementPage() {
     total: 0,
     withoutCoords: 0,
     withoutDescription: 0,
+    suspiciousCoords: 0,
     duplicates: 0,
   });
 
   // Load place types
   useEffect(() => {
     loadPlaceTypes();
+    loadCityOptions();
   }, []);
 
   // Load places when filters change
   useEffect(() => {
     loadPlaces();
+    loadMapPlaces();
     loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filterCity, filterType, searchQuery, showWithoutCoords]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filterCity, filterType, searchQuery, showWithoutCoords]);
+
+  const visibleMapPlaces = useMemo(() => {
+    const withCoords = mapPlaces.filter(place => place.latitude != null && place.longitude != null);
+    return showOnlySuspiciousCoords ? withCoords.filter(isSuspiciousCoordinate) : withCoords;
+  }, [mapPlaces, showOnlySuspiciousCoords]);
+
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (filterCity !== 'all' && CITY_CENTERS[filterCity]) {
+      return CITY_CENTERS[filterCity];
+    }
+    if (!visibleMapPlaces.length) return DEFAULT_MAP_CENTER;
+    const sum = visibleMapPlaces.reduce(
+      (acc, place) => {
+        acc.lat += place.latitude || 0;
+        acc.lng += place.longitude || 0;
+        return acc;
+      },
+      { lat: 0, lng: 0 }
+    );
+    return [sum.lat / visibleMapPlaces.length, sum.lng / visibleMapPlaces.length];
+  }, [filterCity, visibleMapPlaces]);
 
   async function loadPlaceTypes() {
     const { data } = await supabase
@@ -84,6 +154,25 @@ export default function PlaceManagementPage() {
       .order('name');
     
     if (data) setPlaceTypes(data);
+  }
+
+  async function loadCityOptions() {
+    const { data } = await supabase
+      .from('places')
+      .select('city')
+      .not('city', 'is', null)
+      .limit(10000);
+
+    if (!data) return;
+    const uniqueCities = Array.from(
+      new Set(
+        data
+          .map((row) => row.city)
+          .filter((city): city is string => Boolean(city))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+    setCityOptions(uniqueCities);
   }
 
   async function loadPlaces() {
@@ -115,6 +204,33 @@ export default function PlaceManagementPage() {
     if (count !== null) setTotalCount(count);
   }
 
+  async function loadMapPlaces() {
+    let query = supabase
+      .from('places')
+      .select('id, name, city, country, address, latitude, longitude, place_type_id, price_level, indoor_outdoor, description, phone, website, created_at, place_types(name, slug)')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (filterCity !== 'all') {
+      query = query.eq('city', filterCity);
+    }
+
+    if (filterType !== 'all') {
+      query = query.eq('place_type_id', filterType);
+    }
+
+    if (searchQuery) {
+      query = query.ilike('name', `%${searchQuery}%`);
+    }
+
+    if (showWithoutCoords) {
+      query = query.or('latitude.is.null,longitude.is.null');
+    }
+
+    const { data } = await query;
+    if (data) setMapPlaces(data as Place[]);
+  }
+
   async function loadStats() {
     const { count: total } = await supabase
       .from('places')
@@ -130,10 +246,37 @@ export default function PlaceManagementPage() {
       .select('*', { count: 'exact', head: true })
       .is('description', null);
 
+    const { data: coordRows } = await supabase
+      .from('places')
+      .select('id, city, latitude, longitude')
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
+      .limit(10000);
+
+    const suspiciousCoords = (coordRows || []).filter((row) =>
+      isSuspiciousCoordinate({
+        id: row.id as string,
+        city: (row.city as string) || '',
+        latitude: row.latitude as number,
+        longitude: row.longitude as number,
+        name: '',
+        place_type_id: '',
+        country: '',
+        address: null,
+        phone: null,
+        website: null,
+        description: null,
+        price_level: null,
+        indoor_outdoor: null,
+        created_at: '',
+      })
+    ).length;
+
     setStats({
       total: total || 0,
       withoutCoords: withoutCoords || 0,
       withoutDescription: withoutDescription || 0,
+      suspiciousCoords,
       duplicates: 0, // Can implement duplicate detection
     });
   }
@@ -230,6 +373,10 @@ export default function PlaceManagementPage() {
               <span className="ml-2 font-semibold text-yellow-600">{stats.withoutDescription}</span>
             </div>
             <div>
+              <span className="text-gray-600">Suspicious coords:</span>
+              <span className="ml-2 font-semibold text-red-600">{stats.suspiciousCoords}</span>
+            </div>
+            <div>
               <span className="text-gray-600">Showing:</span>
               <span className="ml-2 font-semibold text-blue-600">{totalCount}</span>
             </div>
@@ -255,8 +402,9 @@ export default function PlaceManagementPage() {
               className="px-3 py-2 border rounded-lg text-sm"
             >
               <option value="all">All Cities</option>
-              <option value="Trento">Trento</option>
-              <option value="Prague">Prague</option>
+              {cityOptions.map((city) => (
+                <option key={city} value={city}>{city}</option>
+              ))}
             </select>
 
             <select
@@ -280,12 +428,23 @@ export default function PlaceManagementPage() {
               Missing coordinates
             </label>
 
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showOnlySuspiciousCoords}
+                onChange={(e) => setShowOnlySuspiciousCoords(e.target.checked)}
+                className="rounded"
+              />
+              Suspicious coords only (map)
+            </label>
+
             <button
               onClick={() => {
                 setSearchQuery('');
                 setFilterCity('all');
                 setFilterType('all');
                 setShowWithoutCoords(false);
+                setShowOnlySuspiciousCoords(false);
               }}
               className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
             >
@@ -296,6 +455,60 @@ export default function PlaceManagementPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-4 border-b flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Filtered Places Map</h2>
+            <p className="text-sm text-gray-600">
+              Showing {Math.min(visibleMapPlaces.length, 2000)} of {visibleMapPlaces.length} mapped places
+            </p>
+          </div>
+          <div className="p-4">
+            <div className="h-96 rounded-lg overflow-hidden border">
+              {typeof window !== 'undefined' ? (
+                <MapContainer
+                  center={mapCenter}
+                  zoom={filterCity === 'all' ? 6 : 11}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; OpenStreetMap contributors'
+                  />
+                  {visibleMapPlaces.slice(0, 2000).map((place) => {
+                    if (place.latitude == null || place.longitude == null) return null;
+                    const suspicious = isSuspiciousCoordinate(place);
+                    return (
+                      <CircleMarker
+                        key={place.id}
+                        center={[place.latitude, place.longitude]}
+                        radius={4}
+                        pathOptions={{ color: suspicious ? '#dc2626' : '#2563eb', fillOpacity: 0.85 }}
+                      >
+                        <Popup>
+                          <div className="text-sm">
+                            <strong>{place.name}</strong>
+                            <div>{place.city || 'Unknown city'}</div>
+                            <div>{place.address || 'No address'}</div>
+                            <div className="mt-1 text-xs text-gray-600">
+                              {place.latitude.toFixed(6)}, {place.longitude.toFixed(6)}
+                            </div>
+                            {suspicious && (
+                              <div className="mt-1 text-xs font-semibold text-red-600">Suspicious coordinate</div>
+                            )}
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    );
+                  })}
+                </MapContainer>
+              ) : null}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Tip: red markers indicate likely wrong coordinates (outside Italy bounds or too far from the selected city center).
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-12 gap-6">
           {/* Left: Place List */}
           <div className="col-span-5 bg-white rounded-lg shadow">

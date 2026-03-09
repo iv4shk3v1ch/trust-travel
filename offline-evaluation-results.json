@@ -1,0 +1,169 @@
+{
+  "generatedAt": "2026-03-07T21:48:09.166Z",
+  "protocol": {
+    "kind": "cross_city_leave_one_city_out",
+    "k": 10,
+    "minTrainReviews": 5,
+    "minTargetReviews": 3,
+    "positiveThreshold": 4
+  },
+  "dataset": {
+    "reviews": 6974,
+    "users": 122,
+    "places": 3462,
+    "cases": 154,
+    "targetCities": [
+      "Trento",
+      "Milan",
+      "Rome",
+      "Florence"
+    ]
+  },
+  "overall": {
+    "popular": {
+      "cases": 154,
+      "coverage": 1,
+      "precisionAtK": 0.35454545454545455,
+      "recallAtK": 0.17564493616525323,
+      "hitRateAtK": 0.8831168831168831,
+      "ndcgAtK": 0.38306808077538756,
+      "avgRecommendationCount": 10
+    },
+    "cf_only": {
+      "cases": 154,
+      "coverage": 0.9415584415584416,
+      "precisionAtK": 0.2123376623376623,
+      "recallAtK": 0.10015263897082752,
+      "hitRateAtK": 0.7402597402597403,
+      "ndcgAtK": 0.23315888929212494,
+      "avgRecommendationCount": 9.415584415584416
+    },
+    "hybrid": {
+      "cases": 154,
+      "coverage": 1,
+      "precisionAtK": 0.28376623376623367,
+      "recallAtK": 0.13675895317301026,
+      "hitRateAtK": 0.8636363636363636,
+      "ndcgAtK": 0.3074971732864387,
+      "avgRecommendationCount": 10
+    }
+  },
+  "byCity": {
+    "Trento": {
+      "popular": {
+        "cases": 16,
+        "coverage": 1,
+        "precisionAtK": 0.2875,
+        "recallAtK": 0.2106209108110731,
+        "hitRateAtK": 0.8125,
+        "ndcgAtK": 0.4059959827668078,
+        "avgRecommendationCount": 10
+      },
+      "cf_only": {
+        "cases": 16,
+        "coverage": 0.875,
+        "precisionAtK": 0.25,
+        "recallAtK": 0.17911573298236588,
+        "hitRateAtK": 0.75,
+        "ndcgAtK": 0.3403538256437195,
+        "avgRecommendationCount": 8.75
+      },
+      "hybrid": {
+        "cases": 16,
+        "coverage": 1,
+        "precisionAtK": 0.26875,
+        "recallAtK": 0.201823422379964,
+        "hitRateAtK": 0.875,
+        "ndcgAtK": 0.36984712391798713,
+        "avgRecommendationCount": 10
+      }
+    },
+    "Milan": {
+      "popular": {
+        "cases": 44,
+        "coverage": 1,
+        "precisionAtK": 0.3136363636363636,
+        "recallAtK": 0.1650285361685919,
+        "hitRateAtK": 0.8181818181818182,
+        "ndcgAtK": 0.36700230724696237,
+        "avgRecommendationCount": 10
+      },
+      "cf_only": {
+        "cases": 44,
+        "coverage": 0.9545454545454546,
+        "precisionAtK": 0.18636363636363634,
+        "recallAtK": 0.09624872895881205,
+        "hitRateAtK": 0.7272727272727273,
+        "ndcgAtK": 0.2137310406324908,
+        "avgRecommendationCount": 9.545454545454545
+      },
+      "hybrid": {
+        "cases": 44,
+        "coverage": 1,
+        "precisionAtK": 0.2522727272727272,
+        "recallAtK": 0.12658224105273178,
+        "hitRateAtK": 0.8181818181818182,
+        "ndcgAtK": 0.2970445900384603,
+        "avgRecommendationCount": 10
+      }
+    },
+    "Rome": {
+      "popular": {
+        "cases": 54,
+        "coverage": 1,
+        "precisionAtK": 0.34629629629629627,
+        "recallAtK": 0.15656440741256403,
+        "hitRateAtK": 0.9074074074074074,
+        "ndcgAtK": 0.3501748909729788,
+        "avgRecommendationCount": 10
+      },
+      "cf_only": {
+        "cases": 54,
+        "coverage": 0.9629629629629629,
+        "precisionAtK": 0.15370370370370365,
+        "recallAtK": 0.06487578807185554,
+        "hitRateAtK": 0.7037037037037037,
+        "ndcgAtK": 0.16758575369268178,
+        "avgRecommendationCount": 9.62962962962963
+      },
+      "hybrid": {
+        "cases": 54,
+        "coverage": 1,
+        "precisionAtK": 0.2555555555555555,
+        "recallAtK": 0.11630738964638843,
+        "hitRateAtK": 0.8518518518518519,
+        "ndcgAtK": 0.25550937130931917,
+        "avgRecommendationCount": 10
+      }
+    },
+    "Florence": {
+      "popular": {
+        "cases": 40,
+        "coverage": 1,
+        "precisionAtK": 0.4374999999999999,
+        "recallAtK": 0.19909130011938306,
+        "hitRateAtK": 0.95,
+        "ndcgAtK": 0.4359750770933399,
+        "avgRecommendationCount": 10
+      },
+      "cf_only": {
+        "cases": 40,
+        "coverage": 0.925,
+        "precisionAtK": 0.305,
+        "recallAtK": 0.12048545109304139,
+        "hitRateAtK": 0.8,
+        "ndcgAtK": 0.30017528133633287,
+        "avgRecommendationCount": 9.25
+      },
+      "hybrid": {
+        "cases": 40,
+        "coverage": 1,
+        "precisionAtK": 0.3625000000000001,
+        "recallAtK": 0.1495371595834747,
+        "hitRateAtK": 0.925,
+        "ndcgAtK": 0.36423856727570725,
+        "avgRecommendationCount": 10
+      }
+    }
+  }
+}

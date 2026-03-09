@@ -8,6 +8,29 @@ import { interactionTracker } from "@/core/services/interactionTracker";
 import { supabase } from "@/core/database/supabase";
 import { loadExistingProfile } from "@/core/database/newDatabase";
 
+const SUPPORTED_CITIES = ['Trento', 'Milan', 'Rome', 'Florence'] as const;
+const DEFAULT_CITY = 'Trento';
+
+function normalizeCity(input?: string | null): string {
+  if (!input) return DEFAULT_CITY;
+  const normalized = input.trim().toLowerCase();
+  const aliasMap: Record<string, string> = {
+    trento: 'Trento',
+    'trento-city': 'Trento',
+    milan: 'Milan',
+    milano: 'Milan',
+    'milan-city': 'Milan',
+    rome: 'Rome',
+    roma: 'Rome',
+    'rome-city': 'Rome',
+    florence: 'Florence',
+    firenze: 'Florence',
+    'florence-city': 'Florence'
+  };
+  if (aliasMap[normalized]) return aliasMap[normalized];
+  return SUPPORTED_CITIES.find((city) => city.toLowerCase() === normalized) || DEFAULT_CITY;
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("💬 Chatbot API endpoint called");
@@ -37,6 +60,7 @@ export async function POST(request: NextRequest) {
         userProfile = await loadExistingProfile();
         console.log("👤 User profile loaded:", {
           budget: userProfile?.budget,
+          home_city: userProfile?.home_city,
           food_restrictions: userProfile?.food_restrictions,
           env_preference: userProfile?.env_preference
         });
@@ -53,6 +77,7 @@ export async function POST(request: NextRequest) {
       user?.id,
       userProfile ? {
         budget: userProfile.budget,
+        home_city: normalizeCity(userProfile.home_city),
         env_preference: userProfile.env_preference,
         food_restrictions: userProfile.food_restrictions
       } : null
@@ -103,10 +128,11 @@ export async function POST(request: NextRequest) {
         }
         
         // Build recommendation context from chatbot preferences
+        const resolvedCity = normalizeCity(result.preferences.destination || userProfile?.home_city);
         const context: RecommendationContext = {
           intent: userIntent,
           userId: user?.id,
-          location: result.preferences.destination || 'Trento',
+          location: resolvedCity,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           categories: result.preferences.categories as any, // Type assertion - categories from chatbot are valid
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,6 +152,7 @@ export async function POST(request: NextRequest) {
         }
 
         console.log("🎯 Recommendation context:", {
+          location: context.location,
           intent: context.intent,
           categories: context.categories,
           experienceTags: context.experienceTags,
@@ -146,8 +173,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Override preferences budget with user profile budget for display
-    const finalPreferences = result.preferences && userProfile?.budget 
-      ? { ...result.preferences, budget: userProfile.budget as 'low' | 'medium' | 'high' }
+    const finalPreferences = result.preferences
+      ? {
+          ...result.preferences,
+          destination: normalizeCity(result.preferences.destination || userProfile?.home_city),
+          budget: (userProfile?.budget || result.preferences.budget) as 'low' | 'medium' | 'high' | undefined
+        }
       : result.preferences;
 
     const response = NextResponse.json({

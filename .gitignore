@@ -49,6 +49,7 @@ QUICK_START.md
 scripts/test-users.txt
 scripts/milan-users.txt
 scripts/README_TRIPADVISOR_IMPORT.md
+scripts/.cache/
 reviews/
 literature/
 thesis_context.md

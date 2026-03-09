@@ -7,6 +7,112 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/core/database/supabase';
 import { supabaseAdmin } from '@/core/database/supabase';
 
+type PlaceRow = {
+  id: string;
+  name: string;
+  city: string | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  price_level: string | number | null;
+  verified: boolean | null;
+  indoor_outdoor: string | null;
+  working_hours: string | null;
+  phone: string | null;
+  website: string | null;
+  photo_urls: string[] | null;
+  avg_rating?: number | null;
+  review_count?: number | null;
+  place_types?: { slug?: string | null } | Array<{ slug?: string | null }> | null;
+};
+
+async function fetchPlacesDetails(placeIds: string[]) {
+  const selectCandidates = [
+    `
+      id,
+      name,
+      city,
+      description,
+      address,
+      latitude,
+      longitude,
+      avg_rating,
+      review_count,
+      price_level,
+      verified,
+      indoor_outdoor,
+      working_hours,
+      phone,
+      website,
+      photo_urls,
+      place_types!inner (
+        slug
+      )
+    `,
+    `
+      id,
+      name,
+      city,
+      description,
+      address,
+      latitude,
+      longitude,
+      price_level,
+      verified,
+      indoor_outdoor,
+      working_hours,
+      phone,
+      website,
+      photo_urls,
+      place_types!inner (
+        slug
+      )
+    `
+  ];
+
+  for (const select of selectCandidates) {
+    const { data, error } = await supabaseAdmin
+      .from('places')
+      .select(select)
+      .in('id', placeIds);
+
+    if (!error && data) {
+      return data as PlaceRow[];
+    }
+  }
+
+  return null;
+}
+
+async function getReviewStats(placeIds: string[]) {
+  const { data, error } = await supabaseAdmin
+    .from('reviews')
+    .select('place_id, overall_rating')
+    .in('place_id', placeIds)
+    .not('overall_rating', 'is', null);
+
+  if (error || !data) return new Map<string, { average: number; count: number }>();
+
+  const accum = new Map<string, { total: number; count: number }>();
+  for (const row of data) {
+    const placeId = row.place_id as string;
+    const rating = Number(row.overall_rating);
+    if (!Number.isFinite(rating)) continue;
+
+    const current = accum.get(placeId) || { total: 0, count: 0 };
+    current.total += rating;
+    current.count += 1;
+    accum.set(placeId, current);
+  }
+
+  const stats = new Map<string, { average: number; count: number }>();
+  for (const [placeId, { total, count }] of accum.entries()) {
+    stats.set(placeId, { average: count > 0 ? total / count : 0, count });
+  }
+  return stats;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -158,39 +264,17 @@ export async function GET(request: NextRequest) {
 
       // Then fetch place details with place_type
       const placeIds = interactions.map(i => i.place_id);
-      const { data: placesData, error: placesError } = await supabaseAdmin
-        .from('places')
-        .select(`
-          id,
-          name,
-          description,
-          address,
-          latitude,
-          longitude,
-          avg_rating,
-          review_count,
-          price_level,
-          verified,
-          indoor_outdoor,
-          working_hours,
-          phone,
-          website,
-          photo_urls,
-          place_types!inner (
-            slug
-          )
-        `)
-        .in('id', placeIds);
-
-      if (placesError) {
-        console.error('❌ Error fetching places:', placesError);
+      const placesData = await fetchPlacesDetails(placeIds);
+      if (!placesData) {
+        console.error('❌ Error fetching places details');
         return NextResponse.json({ 
           error: 'Failed to fetch place details',
-          details: placesError.message
+          details: 'Could not fetch place details from places table'
         }, { status: 500 });
       }
 
       console.log('📦 Fetched', placesData?.length, 'place records');
+      const reviewStats = await getReviewStats(placeIds);
 
       // Transform to match RecommendedPlace interface and maintain order
       const placeMap = new Map(placesData?.map(p => [p.id, p]) || []);
@@ -203,12 +287,15 @@ export async function GET(request: NextRequest) {
           const placeType = Array.isArray(place.place_types) 
             ? place.place_types[0] 
             : place.place_types;
+          const stats = reviewStats.get(place.id);
+          const averageRating = Number(place.avg_rating ?? stats?.average ?? 0);
+          const reviewCount = Number(place.review_count ?? stats?.count ?? 0);
           
           return {
             id: place.id,
             name: place.name,
             category: placeType?.slug || 'unknown',
-            city: null,
+            city: place.city || null,
             address: place.address,
             description: place.description,
             photo_urls: place.photo_urls || [],
@@ -220,8 +307,8 @@ export async function GET(request: NextRequest) {
             price_level: place.price_level?.toString() || null,
             indoor_outdoor: place.indoor_outdoor,
             verified: place.verified,
-            average_rating: place.avg_rating || 0,
-            review_count: place.review_count || 0,
+            average_rating: Number.isFinite(averageRating) ? averageRating : 0,
+            review_count: Number.isFinite(reviewCount) ? reviewCount : 0,
             matching_tags: [],
             tag_confidence: 0,
             trusted_reviewers_count: 0,

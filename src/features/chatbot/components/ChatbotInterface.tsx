@@ -52,7 +52,7 @@ export const ChatbotInterface = forwardRef<ChatbotInterfaceHandle, ChatbotInterf
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm here to help you discover amazing places in Trento. What kind of experience are you looking for today? 🗺️",
+      content: "Hi! I'm here to help you discover amazing places across Trento, Milan, Rome, and Florence. What kind of experience are you looking for today? 🗺️",
       timestamp: new Date()
     }
   ]);
@@ -268,7 +268,7 @@ export const ChatbotInterface = forwardRef<ChatbotInterfaceHandle, ChatbotInterf
       {
         id: '1',
         role: 'assistant',
-        content: "Hi! I'm here to help you discover amazing places in Trento. What kind of experience are you looking for today? 🗺️",
+        content: "Hi! I'm here to help you discover amazing places across Trento, Milan, Rome, and Florence. What kind of experience are you looking for today? 🗺️",
         timestamp: new Date()
       }
     ]);
@@ -396,7 +396,7 @@ export const ChatbotInterface = forwardRef<ChatbotInterfaceHandle, ChatbotInterf
               <div>
                 <h3 className="font-semibold">AI Travel Assistant</h3>
                 <p className="text-sm text-white/80">
-                  {allRecommendations.length > 0 ? `${allRecommendations.length} places discovered!` : 'Discover amazing places in Trento'}
+                  {allRecommendations.length > 0 ? `${allRecommendations.length} places discovered!` : 'Discover amazing places in Italian cities'}
                   {isSessionRestored && messages.length > 1 && (
                     <span className="ml-2 text-xs">💾 Session restored</span>
                   )}

@@ -12,21 +12,25 @@ import {
   disconnectFromUser,
   type UserConnection
 } from '../connections';
+import { useAuth } from '@/features/auth/AuthContext';
 
 // Query keys for cache management
 export const connectionKeys = {
   all: ['connections'] as const,
-  myConnections: () => [...connectionKeys.all, 'my-connections'] as const,
-  whoTrustsMe: () => [...connectionKeys.all, 'who-trusts-me'] as const,
+  myConnections: (userId?: string) => [...connectionKeys.all, 'my-connections', userId ?? 'anon'] as const,
+  whoTrustsMe: (userId?: string) => [...connectionKeys.all, 'who-trusts-me', userId ?? 'anon'] as const,
 };
 
 /**
  * Hook to fetch user's connections (people they trust)
  */
 export function useMyConnections() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: connectionKeys.myConnections(),
+    queryKey: connectionKeys.myConnections(user?.id),
     queryFn: getMyConnections,
+    enabled: Boolean(user?.id),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -35,9 +39,12 @@ export function useMyConnections() {
  * Hook to fetch users who trust the current user
  */
 export function useWhoTrustsMe() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: connectionKeys.whoTrustsMe(),
+    queryKey: connectionKeys.whoTrustsMe(user?.id),
     queryFn: getUsersWhoTrustMe,
+    enabled: Boolean(user?.id),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -47,6 +54,9 @@ export function useWhoTrustsMe() {
  */
 export function useDisconnectUser() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const myConnectionsKey = connectionKeys.myConnections(user?.id);
+  const whoTrustsMeKey = connectionKeys.whoTrustsMe(user?.id);
 
   return useMutation({
     mutationFn: (userId: string) => disconnectFromUser(userId),
@@ -54,17 +64,17 @@ export function useDisconnectUser() {
     // Optimistic update: Remove user from cache immediately
     onMutate: async (userId) => {
       // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: connectionKeys.myConnections() });
+      await queryClient.cancelQueries({ queryKey: myConnectionsKey });
 
       // Get current data
       const previousConnections = queryClient.getQueryData<UserConnection[]>(
-        connectionKeys.myConnections()
+        myConnectionsKey
       );
 
       // Optimistically update
       if (previousConnections) {
         queryClient.setQueryData<UserConnection[]>(
-          connectionKeys.myConnections(),
+          myConnectionsKey,
           previousConnections.filter(conn => conn.target_user !== userId)
         );
       }
@@ -77,7 +87,7 @@ export function useDisconnectUser() {
     onError: (_err, _userId, context) => {
       if (context?.previousConnections) {
         queryClient.setQueryData(
-          connectionKeys.myConnections(),
+          myConnectionsKey,
           context.previousConnections
         );
       }
@@ -85,8 +95,8 @@ export function useDisconnectUser() {
 
     // Refetch to ensure consistency
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: connectionKeys.myConnections() });
-      queryClient.invalidateQueries({ queryKey: connectionKeys.whoTrustsMe() });
+      queryClient.invalidateQueries({ queryKey: myConnectionsKey });
+      queryClient.invalidateQueries({ queryKey: whoTrustsMeKey });
     },
   });
 }

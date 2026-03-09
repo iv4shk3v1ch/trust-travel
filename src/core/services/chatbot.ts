@@ -98,7 +98,7 @@ export class ChatbotService {
     userMessage: string,
     conversationHistory: ChatMessage[] = [],
     userId?: string,
-    userProfile?: { budget?: string; env_preference?: string | null; food_restrictions?: string | null } | null
+    userProfile?: { budget?: string; home_city?: string | null; env_preference?: string | null; food_restrictions?: string | null } | null
   ): Promise<{
     response: string;
     isComplete: boolean;
@@ -118,6 +118,10 @@ export class ChatbotService {
         
         if (userProfile.budget) {
           userContext.push(`User's budget preference: ${userProfile.budget}`);
+        }
+
+        if (userProfile.home_city) {
+          userContext.push(`User's home city: ${userProfile.home_city}`);
         }
         
         if (userProfile.env_preference) {
@@ -182,7 +186,7 @@ export class ChatbotService {
           } catch (parseError) {
             console.error('Failed to parse preferences JSON:', parseError);
             console.error('Raw JSON string:', jsonMatch[0]);
-            const fallbackPrefs = this.createFallbackPreferences(userMessage);
+            const fallbackPrefs = this.createFallbackPreferences(userMessage, userProfile?.home_city || undefined);
             console.log('🔄 Using fallback preferences:', fallbackPrefs);
             return {
               response: "I think I understand what you're looking for. Let me find some great places for you!",
@@ -211,7 +215,7 @@ export class ChatbotService {
                             message.includes('hike') || message.includes('place');
       
       if (isPlaceRequest) {
-        const fallbackPrefs = this.createFallbackPreferences(userMessage);
+        const fallbackPrefs = this.createFallbackPreferences(userMessage, userProfile?.home_city || undefined);
         console.log('🔄 Using fallback preferences due to Groq error:', fallbackPrefs);
         return {
           response: "I'm having trouble connecting to my AI service, but I'll try to help you anyway! Let me find some places based on what you asked...",
@@ -232,7 +236,34 @@ export class ChatbotService {
   // It was using the old recommender.ts instead of the new recommendationEngine.ts
   // If needed in future, use getIntentBasedRecommendations from recommendationEngine.ts instead
 
-  private createFallbackPreferences(userMessage: string): ChatbotPreferences {
+  private normalizeDestination(input?: string | null): string {
+    const normalized = (input || '').trim().toLowerCase();
+    const aliasMap: Record<string, string> = {
+      trento: 'Trento',
+      'trento-city': 'Trento',
+      milan: 'Milan',
+      milano: 'Milan',
+      'milan-city': 'Milan',
+      rome: 'Rome',
+      roma: 'Rome',
+      'rome-city': 'Rome',
+      florence: 'Florence',
+      firenze: 'Florence',
+      'florence-city': 'Florence'
+    };
+    return aliasMap[normalized] || 'Trento';
+  }
+
+  private detectDestination(userMessage: string, fallbackCity?: string): string {
+    const message = userMessage.toLowerCase();
+    if (/\btrento\b/.test(message)) return 'Trento';
+    if (/\b(milan|milano)\b/.test(message)) return 'Milan';
+    if (/\b(rome|roma)\b/.test(message)) return 'Rome';
+    if (/\b(florence|firenze)\b/.test(message)) return 'Florence';
+    return this.normalizeDestination(fallbackCity);
+  }
+
+  private createFallbackPreferences(userMessage: string, fallbackCity?: string): ChatbotPreferences {
     // Enhanced fallback logic based on keywords in user message
     const message = userMessage.toLowerCase();
     const categories: string[] = [];
@@ -358,10 +389,13 @@ export class ChatbotService {
       experienceTags.push('authentic-local');
     }
 
+    const destination = this.detectDestination(userMessage, fallbackCity);
+
     console.log(`🎯 Fallback preferences created:`, {
       isGeneral: isGeneralQuery,
       categories: categories.length,
       tags: experienceTags.length,
+      destination,
       message: userMessage.substring(0, 50)
     });
 
@@ -369,7 +403,7 @@ export class ChatbotService {
       intent: 'goal-oriented', // Fallback always assumes user wants recommendations
       categories: categories,
       experienceTags: experienceTags,
-      destination: 'Trento',
+      destination,
       summary: `Based on your request: ${userMessage.substring(0, 80)}...`
     };
   }

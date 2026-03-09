@@ -37,9 +37,9 @@ export default function ConnectionsPage() {
     myConnections.forEach(connection => {
       nodes.push({
         id: connection.target_user,
-        name: connection.profiles.full_name,
+        name: connection.profiles.full_name || 'Traveler',
         avatar: '/default-avatar.png', // No avatar in current schema
-        reviews: Math.floor(Math.random() * 50) + 1, // Mock data
+        reviews: Math.max(1, connection.trust_level * 5),
         isCurrentUser: false
       });
     });
@@ -49,9 +49,9 @@ export default function ConnectionsPage() {
       if (!nodes.find(n => n.id === trustee.source_user)) {
         nodes.push({
           id: trustee.source_user,
-          name: trustee.profiles.full_name,
+          name: trustee.profiles.full_name || 'Traveler',
           avatar: '/default-avatar.png', // No avatar in current schema
-          reviews: Math.floor(Math.random() * 30) + 1, // Mock data
+          reviews: Math.max(1, trustee.trust_level * 5),
           isCurrentUser: false
         });
       }
@@ -125,13 +125,13 @@ export default function ConnectionsPage() {
     return labels[level as keyof typeof labels] || level;
   };
 
-  const getTripStyleLabel = (style: string) => {
+  const getTripStyleLabel = (style?: string | null) => {
     const labels = {
       'planned': 'Detailed Planner',
       'mixed': 'Flexible Explorer',
       'spontaneous': 'Go with the Flow'
     };
-    return labels[style as keyof typeof labels] || style;
+    return labels[style as keyof typeof labels] || 'Traveler';
   };
 
   const ConnectionCard = ({ connection, showDisconnect = false }: { 
@@ -140,16 +140,18 @@ export default function ConnectionsPage() {
   }) => {
     const profile = connection.profiles;
     const userId = 'target_user' in connection ? connection.target_user : connection.source_user;
+    const activities = profile.activities || [];
+    const personalityTraits = profile.personality_traits || [];
     
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="text-base font-semibold text-gray-900">
-              {profile.full_name}
+              {profile.full_name || 'Traveler'}
             </h3>
             <p className="text-sm text-gray-600">
-              {profile.age} years • {profile.gender}
+              {profile.age ? `${profile.age} years` : 'Age not set'} • {profile.gender || 'Not specified'}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               Connected {new Date(connection.created_at).toLocaleDateString()}
@@ -157,7 +159,7 @@ export default function ConnectionsPage() {
           </div>
           <div className="flex flex-col items-end space-y-1">
             <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">
-              {getBudgetLabel(profile.budget)}
+              {getBudgetLabel(profile.budget || 'medium')}
             </span>
             <span className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full font-medium">
               {getTripStyleLabel(profile.trip_style)}
@@ -171,14 +173,19 @@ export default function ConnectionsPage() {
             Activities:
           </h4>
           <div className="flex flex-wrap gap-1">
-            {profile.activities.slice(0, 4).map((activity) => (
+            {activities.slice(0, 4).map((activity) => (
               <span key={activity} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
                 {activity}
               </span>
             ))}
-            {profile.activities.length > 4 && (
+            {activities.length > 4 && (
               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                +{profile.activities.length - 4} more
+                +{activities.length - 4} more
+              </span>
+            )}
+            {activities.length === 0 && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                Not specified
               </span>
             )}
           </div>
@@ -190,14 +197,19 @@ export default function ConnectionsPage() {
             Personality:
           </h4>
           <div className="flex flex-wrap gap-1">
-            {profile.personality_traits.slice(0, 3).map((trait) => (
+            {personalityTraits.slice(0, 3).map((trait) => (
               <span key={trait} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full">
                 {trait}
               </span>
             ))}
-            {profile.personality_traits.length > 3 && (
+            {personalityTraits.length > 3 && (
               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                +{profile.personality_traits.length - 3} more
+                +{personalityTraits.length - 3} more
+              </span>
+            )}
+            {personalityTraits.length === 0 && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                Not specified
               </span>
             )}
           </div>
